@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+
+  --color-navy-50: #f1f5fa;
+  --color-navy-100: #dbe4ef;
+  --color-navy-200: #b7c9de;
+  --color-navy-400: #4a6a94;
+  --color-navy-600: #163a63;
+  --color-navy-700: #123255;
+  --color-navy-800: #0e2947;
+  --color-navy-900: #0b2545;
+  --color-navy-950: #071a30;
+
+  --color-av-blue: #1d4ed8;
+  --color-av-blue-dark: #1e40af;
+  --color-av-red: #dc2626;
+  --color-av-red-dark: #b91c1c;
+  --color-av-orange: #ea580c;
+  --color-av-green: #16a34a;
+  --color-av-surface: #f8fafc;
+
+  --radius-card: 1rem;
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 26px -18px rgba(15, 23, 42, 0.35);
+  --shadow-soft: 0 1px 3px rgba(15, 23, 42, 0.06), 0 6px 16px -12px rgba(15, 23, 42, 0.25);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-av-surface font-sans text-navy-900 antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-av-blue;
+  }
+}
+
+@utility safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + env(safe-area-inset-right, 0px));
+}
