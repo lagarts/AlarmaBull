@@ -189,5 +189,95 @@ El cliente recibe **"alerta registrada"**, nunca "todos recibieron la notificaci
 ## 12. Calidad
 
 - `npm run typecheck` · `npm run lint` · `npm run test` · `npm run build`.
-- Pruebas por fase; ver checklist en `docs/FASE1.md` y el listado obligatorio del
-  proyecto (§14).
+- Pruebas por fase; ver `docs/ESTADO.md` (estado por fase) y el checklist de
+  `docs/FASE1.md`.
+- Pruebas de base de datos (seguridad/RLS): `scripts/test-db.ps1` sobre un
+  PostgreSQL efímero con las migraciones reales (`tests/db/`).
+
+---
+
+# Actualización (fases 2–10)
+
+Las secciones 1 a 12 describen el diseño definido en la FASE 1 y siguen vigentes salvo
+las aclaraciones de la subsección 13.1. Este bloque documenta lo incorporado entre la
+FASE 2 y la FASE 10. Estado detallado por fase: `docs/ESTADO.md`.
+
+## 13.1. Aclaraciones sobre la sección 4 (mapa de rutas)
+
+- **No hay landing**: la tabla de la sección 4 sigue listando `/` como "Bienvenida";
+  desde la FASE 2 la raíz redirige a la aplicación (`src/App.tsx`): a `/acceder` si no hay
+  sesión y a `/inicio` si la hay. `WelcomePage.tsx` y `makePlaceholder.tsx` se eliminaron.
+- `/admin` es **FASE 10**, no "fase 12" (no existe una FASE 12 en el plan del proyecto).
+- Todas las rutas de la tabla tienen pantalla real (no quedan placeholders). Sobra
+  `src/pages/PageStub.tsx`: componente de relleno sin uso.
+- Ruta comodín `*` → `src/pages/NotFoundPage.tsx`.
+- Guardas sin cambios: `PublicOnly` (no autenticados) y `RequireAuth` (sesión obligatoria,
+  aviso si falta configurar Supabase), ambas en `src/routes/guards.tsx`.
+
+## 13.2. Módulos nuevos en `src/`
+
+| Ruta | Contenido | Fase |
+| --- | --- | --- |
+| `src/data/` | Acceso a datos por dominio, todo el puente hacia Supabase: `client.ts`, `community.ts`, `alerts.ts`, `subscription.ts`, `profile.ts`, `emergency.ts`, `admin.ts`, `notifications.ts` (`dispatchAlertPush`), `types.ts`, `index.ts` (re-export) | 3–8 |
+| `src/hooks/` | `useAsync.ts` (`useAsync` / `useAction`: carga, acción pendiente, error, recarga) y `useCommunity.ts` (comunidad y suscripción del usuario) | 3–6 |
+| `src/components/alarm/` | `ConfirmDialog`, `EmergencyContactsCard`, `NoCommunityState`, `AlertListItem`, `AlertStatusPill`, `SubscriptionChip`, `geolocation.ts`, `relativeTime.ts`, `useAlertsRealtime.ts` (Realtime por comunidad) | 6–8 |
+| `src/components/community/` | `MemberAvatar`, `AlreadyMemberNotice`, `badges.tsx`, `fields.ts` | 4 |
+| `src/components/subscription/` | `CurrentStatusCard`, `PlanCard` (avisa cuando `price_ars = 0`), `PaymentHistoryCard`, `labels.ts` | 5 |
+| `src/components/admin/` | `AdminMetricsPanel`, `AdminUsersPanel`, `AdminPlansPanel`, `AdminContactsPanel`, `AdminPaymentsPanel`, `SuspendUserDialog`, `emergencyContactsAdmin.ts` | 8–10 |
+| `src/lib/push.ts` | Cliente Web Push: `isPushSupported`, `getPushStatus`, `enablePush`, `disablePush`, `hasActivePush`, `notifyLocal` | 7 |
+| `src/sw.ts` | Service worker propio (compilado por Vite a `dist/sw.js`) | 7 |
+| `src/pages/` | 15 pantallas reales: `AuthPage`, `RecoverPage`, `HomePage`, `AlertsHistoryPage`, `AlertDetailPage`, `MembersPage`, `InvitesPage`, `CreateCommunityPage`, `JoinCommunityPage`, `SubscriptionPage`, `ProfilePage`, `ProfileSettingsPage`, `SettingsPage`, `AdminPage`, `NotFoundPage` | 2–10 |
+
+## 13.3. Migraciones y Edge Functions
+
+Migraciones versionadas en `supabase/migrations/` (se aplican en orden):
+
+| Archivo | Contenido |
+| --- | --- |
+| `0001_initial_schema.sql` | Tipos, 15 tablas, índices y restricciones |
+| `0002_functions.sql` | Funciones `SECURITY DEFINER`: perfiles, comunidades e invitaciones, suscripciones, `trigger_alert` (idempotencia + cooldown de 10 s), suscripción a push, RPC de administración (`admin_*`) y triggers (`handle_new_user` crea perfil + prueba de 7 días; `profiles_guard` impide autoasignar rol) |
+| `0003_rls.sql` | Row Level Security en las 15 tablas + alta de `alerts`, `alert_recipients` y `community_members` en la publicación `supabase_realtime` |
+| `0004_seed.sql` | Plan mensual con `price_ars = 0` (precio sin configurar, a propósito) |
+| `0005_seed_emergency_contacts.sql` | 911 / 100 / 107 con fuente oficial `argentina.gob.ar` (FASE 8) |
+
+Edge Functions en `supabase/functions/` (Deno, secretos sólo en Supabase):
+
+| Función | Rol | JWT |
+| --- | --- | --- |
+| `trigger-alert` | Envía los Web Push de una alerta a los destinatarios, con idempotencia por (alerta, destinatario, suscripción); escribe `notification_jobs` | requerido (se despliega sin flag) |
+| `mercadopago-create` | Crea el preapproval de Mercado Pago y devuelve `init_point` | requerido (se despliega sin flag) |
+| `mercadopago-webhook` | Firma `x-signature`, consulta el estado real a MP, idempotencia en `payment_events`, activa/cancela la suscripción | sin JWT → `--no-verify-jwt` |
+
+## 13.4. Tablas nuevas respecto de la sección 5
+
+Además de las tablas listadas en la sección 5, el esquema final tiene:
+
+- `notification_jobs` → una fila por (alerta, destinatario) con `status`
+  (`pending`/`sent`/`failed`), `attempts`, `last_error`, `sent_at`,
+  `push_subscription_id`; base de la idempotencia del Web Push.
+- `community_logs` → historial de acciones de la comunidad.
+- `signup_attempts` → control de intentos de registro.
+
+Total: **15 tablas, todas con RLS activado** (`0003_rls.sql`).
+
+## 13.5. Cambios de configuración respecto de la sección 11
+
+- `vite.config.ts` pasó a `strategies: 'injectManifest'` con `srcDir: 'src'` y
+  `filename: 'sw.ts'` (ver `docs/FASE7_push.md`); el SW propio agrega handlers `push` y
+  `notificationclick` más fallback de navegación.
+- Se agregó `vercel.json`: framework `vite`, `npm ci`, `npm run build`, salida `dist/`,
+  rewrite de SPA a `index.html` y headers de `/sw.js` (`no-cache`, `Service-Worker-Allowed`)
+  y de seguridad (`nosniff`, `Referrer-Policy`, `X-Frame-Options`).
+- `.env.example` suma `VITE_APP_URL` y `VITE_VAPID_PUBLIC_KEY` (sólo la clave pública).
+- Secretos de backend: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL`,
+  `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (y opcional `VAPID_SUBJECT`).
+
+## 13.6. Verificación y documentación por fase
+
+- Verdes: `npm run typecheck`, `npm run lint`, `npm run test` (4 pruebas),
+  `npm run build` (`dist/sw.js`, 15 entradas de precache) y
+  `powershell -ExecutionPolicy Bypass -File scripts\test-db.ps1` (pruebas SQL de
+  seguridad/RLS sobre PostgreSQL efímero; requiere `psql`/`initdb` en el PATH).
+- Documentación: `docs/FASE1.md` (fase 1), `docs/FASE7_push.md` (Web Push),
+  `docs/FASE9_mercadopago.md` (Mercado Pago), `docs/ESTADO.md` (estado por fase) y
+  `docs/DESPLEGUE.md` (checklist de puesta en producción).

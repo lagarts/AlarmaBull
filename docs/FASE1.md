@@ -40,10 +40,10 @@ Conclusión: no había arquitectura previa que respetar; se definió la estructu
 
 | Comando | Resultado |
 | --- | --- |
-| `npm run typecheck` | ✅ sin errores |
-| `npm run lint` | ✅ sin errores ni warnings |
-| `npm run test` | ✅ 2 archivos, 7 pruebas en verde |
-| `npm run build` | ✅ build + `dist/sw.js` (15 entradas de precache) |
+| `npm run typecheck` | OK: sin errores |
+| `npm run lint` | OK: sin errores ni warnings |
+| `npm run test` | OK: 2 archivos, 7 pruebas en verde |
+| `npm run build` | OK: build + `dist/sw.js` (15 entradas de precache) |
 
 Pruebas incluidas: formato de fechas/hora con zona horaria, días restantes de la
 prueba, importes ARS, y la pantalla de bienvenida (incluye la regla de no afirmar
@@ -65,3 +65,17 @@ llamadas automáticas a emergencias).
 
 **FASE 2** — Diseño y navegación: pantallas reales de bienvenida, acceso, inicio con
 botón de alarma, estados de carga/vacío/error y navegación completa.
+
+## 6. Actualización posterior (2026-10-03)
+
+Documento conservado como registro de la FASE 1. Aclaraciones sobre su contenido:
+
+- Las tareas manuales de la sección 4 hoy están agrupadas en `docs/DESPLEGUE.md`
+  (Supabase, GitHub/Vercel, precio del plan). La verificación de números de emergencia
+  se hizo en la FASE 8 (`supabase/migrations/0005_seed_emergency_contacts.sql`).
+- La tabla de la sección 3 refleja ese momento: hoy `npm run test` corre **1 archivo con
+  4 pruebas** (`src/lib/datetime.test.ts`); la prueba de la pantalla de bienvenida se
+  eliminó en la FASE 2 al quitar la landing (`WelcomePage.tsx`).
+- El repositorio dejó de estar "sin commits": hay un commit de la FASE 1 en
+  `origin`; el detalle de lo pendiente de subir está en `docs/ESTADO.md`.
+- Estado actual por fase y verificaciones: `docs/ESTADO.md`.

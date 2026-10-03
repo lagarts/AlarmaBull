@@ -1,14 +1,12 @@
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthProvider'
 import { AppShell } from './components/layout/AppShell'
-import { AuthLayout } from './components/layout/AuthLayout'
-import { Notice } from './components/ui/Feedback'
 import { PublicOnly, RequireAuth } from './routes/guards'
-import { WelcomePage } from './pages/WelcomePage'
 import {
   AdminPage,
   AlertDetailPage,
   AlertsHistoryPage,
+  AuthPage,
   CreateCommunityPage,
   HomePage,
   InvitesPage,
@@ -17,55 +15,28 @@ import {
   NotFoundPage,
   ProfilePage,
   ProfileSettingsPage,
+  RecoverPage,
   SettingsPage,
   SubscriptionPage,
 } from './pages'
-
-function authPlaceholder(title: string, phase: number, description: string) {
-  const Component = () => (
-    <AuthLayout
-      title={title}
-      subtitle={description}
-      footer={
-        <Link to="/" className="font-semibold text-av-blue hover:underline">
-          Volver al inicio
-        </Link>
-      }
-    >
-      <Notice tone="info" title={`Fase ${phase} pendiente`}>
-        Esta pantalla se implementa en la fase {phase}.
-      </Notice>
-    </AuthLayout>
-  )
-  Component.displayName = title
-  return Component
-}
-
-const AuthRegisterPage = authPlaceholder(
-  'Registro e inicio de sesión',
-  3,
-  'Creá tu cuenta o iniciá sesión con tu email.',
-)
-
-const RecoverPage = authPlaceholder(
-  'Recuperación de contraseña',
-  3,
-  'Recibí un link para restablecer tu contraseña.',
-)
 
 function ShellWithAuth() {
   const { isAdmin } = useAuth()
   return <AppShell isAdmin={isAdmin} />
 }
 
+/**
+ * La app no tiene landing: la raíz lleva directo a la aplicación
+ * (/acceder si no hay sesión, /inicio si la hay).
+ */
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
           <Route element={<PublicOnly />}>
-            <Route path="/" element={<WelcomePage />} />
-            <Route path="/acceder" element={<AuthRegisterPage />} />
+            <Route path="/" element={<Navigate to="/acceder" replace />} />
+            <Route path="/acceder" element={<AuthPage />} />
             <Route path="/recuperar" element={<RecoverPage />} />
           </Route>
 

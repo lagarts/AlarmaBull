@@ -9,6 +9,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-maskable-512.png'],
       manifest: {
         name: 'Alarma Vecinal',
@@ -36,11 +39,10 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        navigateFallbackDenylist: [/^\/api\//, /^\/functions\//, /^\/webhooks\//],
-        cleanupOutdatedCaches: true,
+        rollupFormat: 'iife',
       },
       devOptions: {
         enabled: false,

@@ -1,8 +1,8 @@
-import type { ComponentType, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
-type PlaceholderProps = { title: string; phase: number; description?: string }
+type PageStubProps = { title: string; phase: number; description?: string }
 
-function Placeholder({ title, phase, description }: PlaceholderProps): ReactNode {
+export function PageStub({ title, phase, description }: PageStubProps): ReactNode {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <div className="rounded-card border border-navy-100 bg-white p-8 shadow-card">
@@ -17,16 +17,4 @@ function Placeholder({ title, phase, description }: PlaceholderProps): ReactNode
       </div>
     </div>
   )
-}
-
-export function makePlaceholder(
-  title: string,
-  phase: number,
-  description?: string,
-): ComponentType {
-  const Component = (): ReactNode => (
-    <Placeholder title={title} phase={phase} description={description} />
-  )
-  Component.displayName = `Placeholder(${title})`
-  return Component
 }
