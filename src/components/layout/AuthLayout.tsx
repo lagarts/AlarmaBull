@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { LogoMark } from '../icons'
+import { AppLogo } from '../ui/AppLogo'
 import { APP_NAME } from '../../config/env'
 
 export function AuthLayout({
@@ -17,7 +17,7 @@ export function AuthLayout({
     <div className="grid min-h-dvh place-items-center bg-av-surface px-4 py-10">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex items-center justify-center gap-2">
-          <LogoMark className="h-10 w-10 text-navy-900" />
+          <AppLogo className="h-12 w-12" />
           <span className="text-lg font-bold text-navy-900">{APP_NAME}</span>
         </Link>
 

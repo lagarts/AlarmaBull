@@ -129,22 +129,3 @@ export const AlertTriangleIcon = (p: IconProps) => (
   </Base>
 )
 
-export function LogoMark({ className = 'h-8 w-8' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
-      <rect width="64" height="64" rx="14" fill="currentColor" />
-      <path
-        d="M32 12c-7.2 0-13 5.8-13 13v9.6l-4.4 7.6A1.6 1.6 0 0 0 16 46h32a1.6 1.6 0 0 0 1.4-3.8L45 34.6V25c0-7.2-5.8-13-13-13Z"
-        fill="#e11d48"
-      />
-      <path
-        d="M26 50a6 6 0 0 0 12 0"
-        stroke="#fff"
-        strokeWidth="4"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <circle cx="32" cy="25" r="6" fill="#fff" />
-    </svg>
-  )
-}

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { CloseIcon, LogoMark, MenuIcon } from '../icons'
+import { CloseIcon, MenuIcon } from '../icons'
+import { AppLogo } from '../ui/AppLogo'
 import { visibleNavItems } from '../../routes/nav'
 import { APP_NAME } from '../../config/env'
 
@@ -33,7 +34,7 @@ export function AppShell({
     <div className="min-h-dvh bg-av-surface">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-navy-900 px-4 py-6 lg:flex">
         <div className="flex items-center gap-3 px-2">
-          <LogoMark className="h-9 w-9 text-white" />
+          <AppLogo className="h-10 w-10" />
           <div>
             <p className="text-sm font-bold leading-tight text-white">{APP_NAME}</p>
             {communityName && (
@@ -56,7 +57,7 @@ export function AppShell({
 
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-navy-100 bg-white px-4 py-3 lg:hidden">
         <div className="flex items-center gap-2">
-          <LogoMark className="h-8 w-8 text-navy-900" />
+          <AppLogo className="h-9 w-9" />
           <div>
             <p className="text-sm font-bold leading-tight text-navy-900">{APP_NAME}</p>
             {communityName && <p className="text-xs text-navy-600">{communityName}</p>}
