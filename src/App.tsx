@@ -1,7 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthProvider'
 import { AppShell } from './components/layout/AppShell'
-import { HeaderActions } from './components/layout/HeaderActions'
+import { LogoutButton } from './components/layout/LogoutButton'
+import { NotificationsBell } from './components/notifications/NotificationsBell'
 import { PublicOnly, RequireAuth } from './routes/guards'
 import {
   AdminPage,
@@ -26,8 +27,9 @@ function ShellWithAuth() {
   return (
     <AppShell
       isAdmin={isAdmin}
-      sidebarFooter={<HeaderActions isAdmin={isAdmin} tone="dark" />}
-      headerRight={<HeaderActions isAdmin={isAdmin} tone="light" />}
+      sidebarFooter={<LogoutButton tone="dark" />}
+      headerRight={<NotificationsBell tone="light" />}
+      topRight={<NotificationsBell tone="light" />}
     />
   )
 }

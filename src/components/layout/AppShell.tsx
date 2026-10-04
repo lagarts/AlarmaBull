@@ -9,9 +9,16 @@ type AppShellProps = {
   communityName?: string
   headerRight?: ReactNode
   sidebarFooter?: ReactNode
+  topRight?: ReactNode
 }
 
-export function AppShell({ isAdmin = false, communityName, headerRight, sidebarFooter }: AppShellProps) {
+export function AppShell({
+  isAdmin = false,
+  communityName,
+  headerRight,
+  sidebarFooter,
+  topRight,
+}: AppShellProps) {
   const items = visibleNavItems(isAdmin)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -97,7 +104,10 @@ export function AppShell({ isAdmin = false, communityName, headerRight, sidebarF
       )}
 
       <div className="lg:pl-64">
-        <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 sm:px-6 lg:pb-12">
+        {topRight && (
+          <div className="fixed right-5 top-4 z-30 hidden lg:block">{topRight}</div>
+        )}
+        <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pr-24">
           <Outlet />
         </main>
       </div>
