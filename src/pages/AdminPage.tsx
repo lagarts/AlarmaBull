@@ -1,4 +1,5 @@
 ﻿import { Link } from 'react-router-dom'
+import { AdminBroadcastPanel } from '../components/admin/AdminBroadcastPanel'
 import { AdminContactsPanel } from '../components/admin/AdminContactsPanel'
 import { AdminMetricsPanel } from '../components/admin/AdminMetricsPanel'
 import { AdminPaymentsPanel } from '../components/admin/AdminPaymentsPanel'
@@ -24,7 +25,7 @@ export function AdminPage() {
     <div>
       <PageHeader
         title="Administración"
-        subtitle="Métricas, usuarios, precios, contactos de emergencia y eventos de pago."
+        subtitle="Métricas, usuarios, mensajes a todos, precios, contactos de emergencia y eventos de pago."
       />
 
       {!isAdmin ? (
@@ -40,6 +41,7 @@ export function AdminPage() {
         <div className="space-y-5">
           <AdminMetricsPanel />
           <AdminUsersPanel />
+          <AdminBroadcastPanel />
           <AdminPlansPanel />
           <AdminContactsPanel />
           <AdminPaymentsPanel />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { listAdminUsers, setUserSuspended } from '../../data'
+import { deleteUser, listAdminUsers, setSubscriptionFree, setUserSuspended } from '../../data'
 import type { AdminUserRow } from '../../data/types'
 import { useAuth } from '../../context/AuthProvider'
 import { useAction, useAsync } from '../../hooks/useAsync'
@@ -8,26 +8,40 @@ import { subscriptionStatusLabel } from '../subscription/labels'
 import { Button } from '../ui/Button'
 import { Card, CardBody } from '../ui/Card'
 import { EmptyState, ErrorState, Notice, Spinner } from '../ui/Feedback'
+import { ConfirmActionDialog } from './ConfirmActionDialog'
 import { SuspendUserDialog, type SuspendTarget } from './SuspendUserDialog'
 
 function displayName(user: AdminUserRow): string {
   return user.full_name?.trim() || user.email || 'Sin nombre'
 }
 
+type DialogTarget = { kind: 'free' | 'delete'; user: AdminUserRow }
+
 export function AdminUsersPanel() {
   const { user } = useAuth()
   const usersQuery = useAsync<AdminUserRow[]>(() => listAdminUsers(), [])
   const [target, setTarget] = useState<SuspendTarget | null>(null)
+  const [dialog, setDialog] = useState<DialogTarget | null>(null)
 
   const suspendAction = useAction(async (userId: string, suspended: boolean, reason: string | null) => {
     await setUserSuspended(userId, suspended, reason)
     return true
   })
 
+  const freeAction = useAction(async (userId: string) => {
+    await setSubscriptionFree(userId)
+    return true
+  })
+
+  const deleteAction = useAction(async (userId: string) => {
+    await deleteUser(userId)
+    return true
+  })
+
   const users = usersQuery.data ?? []
   const myUserId = user?.id ?? null
 
-  const handleConfirm = async (reason: string | null) => {
+  const handleConfirmSuspend = async (reason: string | null) => {
     if (!target) return
     const ok = await suspendAction.run(target.user.user_id, target.suspended, reason)
     if (ok) {
@@ -36,21 +50,55 @@ export function AdminUsersPanel() {
     }
   }
 
-  const actionButton = (row: AdminUserRow) => {
+  const handleConfirmDialog = async () => {
+    if (!dialog) return
+    const action = dialog.kind === 'free' ? freeAction : deleteAction
+    const ok = await action.run(dialog.user.user_id)
+    if (ok) {
+      setDialog(null)
+      usersQuery.reload()
+    }
+  }
+
+  const actionButtons = (row: AdminUserRow) => {
     const isMe = myUserId === row.user_id
     return (
-      <Button
-        size="sm"
-        variant={row.suspended ? 'outline' : 'danger'}
-        disabled={isMe}
-        title={isMe ? 'No podés suspender tu propia cuenta' : undefined}
-        onClick={() => {
-          suspendAction.clearError()
-          setTarget({ user: row, suspended: !row.suspended })
-        }}
-      >
-        {row.suspended ? 'Reactivar' : 'Suspender'}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant={row.suspended ? 'outline' : 'danger'}
+          disabled={isMe}
+          title={isMe ? 'No podés suspender tu propia cuenta' : undefined}
+          onClick={() => {
+            suspendAction.clearError()
+            setTarget({ user: row, suspended: !row.suspended })
+          }}
+        >
+          {row.suspended ? 'Reactivar' : 'Suspender'}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            freeAction.clearError()
+            setDialog({ kind: 'free', user: row })
+          }}
+        >
+          Dar gratis
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isMe}
+          title={isMe ? 'No podés eliminar tu propia cuenta' : undefined}
+          onClick={() => {
+            deleteAction.clearError()
+            setDialog({ kind: 'delete', user: row })
+          }}
+        >
+          Eliminar
+        </Button>
+      </div>
     )
   }
 
@@ -119,7 +167,7 @@ export function AdminUsersPanel() {
                         {subscriptionStatusLabel(row.subscription_status)}
                       </td>
                       <td className="py-2.5 pr-3 text-navy-600">{formatDate(row.created_at)}</td>
-                      <td className="py-2.5">{actionButton(row)}</td>
+                      <td className="py-2.5">{actionButtons(row)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -149,7 +197,7 @@ export function AdminUsersPanel() {
                     <span>{subscriptionStatusLabel(row.subscription_status)}</span>
                     <span>Alta: {formatDate(row.created_at)}</span>
                   </div>
-                  <div className="mt-3">{actionButton(row)}</div>
+                  <div className="mt-3">{actionButtons(row)}</div>
                 </li>
               ))}
             </ul>
@@ -162,10 +210,31 @@ export function AdminUsersPanel() {
           target={target}
           pending={suspendAction.pending}
           error={suspendAction.error}
-          onConfirm={(reason) => void handleConfirm(reason)}
+          onConfirm={(reason) => void handleConfirmSuspend(reason)}
           onCancel={() => {
             suspendAction.clearError()
             setTarget(null)
+          }}
+        />
+      )}
+
+      {dialog && (
+        <ConfirmActionDialog
+          title={dialog.kind === 'free' ? 'Dar suscripción gratis' : 'Eliminar usuario'}
+          description={
+            dialog.kind === 'free'
+              ? `${displayName(dialog.user)} va a tener la suscripción gratis para siempre, sin cobro ni vencimiento.`
+              : `${displayName(dialog.user)} se va a eliminar definitivamente junto con sus datos y su suscripción. Esta acción no se puede deshacer.`
+          }
+          confirmLabel={dialog.kind === 'free' ? 'Dar gratis' : 'Eliminar'}
+          tone={dialog.kind === 'free' ? 'primary' : 'danger'}
+          pending={dialog.kind === 'free' ? freeAction.pending : deleteAction.pending}
+          error={dialog.kind === 'free' ? freeAction.error : deleteAction.error}
+          onConfirm={() => void handleConfirmDialog()}
+          onCancel={() => {
+            freeAction.clearError()
+            deleteAction.clearError()
+            setDialog(null)
           }}
         />
       )}

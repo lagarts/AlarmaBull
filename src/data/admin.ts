@@ -29,6 +29,16 @@ export function setUserSuspended(userId: string, suspended: boolean, reason: str
   })
 }
 
+/** Suscripción gratis para siempre (sin cobro ni vencimiento). */
+export function setSubscriptionFree(userId: string): Promise<void> {
+  return rpc<void>('admin_set_subscription_free', { p_user_id: userId })
+}
+
+/** Elimina el usuario de raíz (perfil, comunidad, alertas, suscripción). */
+export function deleteUser(userId: string): Promise<void> {
+  return rpc<void>('admin_delete_user', { p_user_id: userId })
+}
+
 export interface EmergencyContactInput {
   serviceType: string
   phoneNumber: string

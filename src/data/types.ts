@@ -147,3 +147,11 @@ export interface AdminPaymentRow {
   created_at: string
   user_id: string | null
 }
+
+export interface AppNotification {
+  id: string
+  title: string
+  body: string | null
+  read_at: string | null
+  created_at: string
+}

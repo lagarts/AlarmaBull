@@ -523,6 +523,95 @@ begin
 end
 $$;
 
+-- ------------------------------------------------------------
+-- FASE 11: broadcast, campanita, gratis para siempre y borrado
+-- ------------------------------------------------------------
+do $$
+declare
+  v_count integer;
+  v_total integer;
+  v_user uuid := '44444444-4444-4444-4444-444444444444';
+begin
+  -- Total de usuarios sin RLS (el broadcast es security definer)
+  select count(*) into v_total from public.profiles;
+
+  set role authenticated;
+
+  -- Sólo el administrador puede emitir el broadcast
+  set request.jwt.claims to '{"sub":"22222222-2222-2222-2222-222222222222"}';
+  begin
+    perform public.admin_broadcast_notifications('Prueba', 'No debería poder');
+    raise exception 'FALLO: un usuario común pudo hacer broadcast';
+  exception
+    when others then
+      if sqlerrm like 'FALLO:%' then raise; end if;
+      raise notice 'OK: el broadcast lo hace sólo el administrador';
+  end;
+
+  -- El broadcast llega a todos los usuarios
+  set request.jwt.claims to '{"sub":"11111111-1111-1111-1111-111111111111"}';
+  v_count := public.admin_broadcast_notifications('Mantenimiento', 'Hoy hay mantenimiento');
+  if v_count is null or v_count <> v_total then
+    raise exception 'FALLO: broadcast a % de % usuarios', v_count, v_total;
+  end if;
+
+  -- Cada usuario ve sólo sus notificaciones y puede marcarlas como leídas
+  set request.jwt.claims to '{"sub":"33333333-3333-3333-3333-333333333333"}';
+  select count(*) into v_count from public.notifications;
+  if v_count <> 1 then
+    raise exception 'FALLO: un usuario ve notificaciones ajenas (%)', v_count;
+  end if;
+
+  update public.notifications set read_at = now() where read_at is null;
+  if exists (select 1 from public.notifications where read_at is null) then
+    raise exception 'FALLO: no se pudieron marcar como leídas';
+  end if;
+
+  begin
+    insert into public.notifications (user_id, title)
+    values ('33333333-3333-3333-3333-333333333333', 'Truco');
+    raise exception 'FALLO: el cliente pudo crear notificaciones';
+  exception
+    when others then
+      if sqlerrm like 'FALLO:%' then raise; end if;
+      raise notice 'OK: campanita sólo recibe mensajes del servidor';
+  end;
+
+  -- Suscripción gratis para siempre (sin vencimiento)
+  set request.jwt.claims to '{"sub":"11111111-1111-1111-1111-111111111111"}';
+  perform public.admin_set_subscription_free(v_user);
+
+  if not exists (
+    select 1 from public.user_subscriptions s
+     where s.user_id = v_user
+       and s.status = 'active'
+       and s.provider = 'manual'
+       and s.current_period_end is null
+       and s.trial_ends_at is null
+  ) then
+    raise exception 'FALLO: no se otorgó la suscripción gratis';
+  end if;
+
+  if not public.is_entitled(v_user) then
+    raise exception 'FALLO: la suscripción gratis no da acceso';
+  end if;
+
+  -- Eliminación definitiva
+  perform public.admin_delete_user(v_user);
+
+  reset role;
+  reset request.jwt.claims;
+
+  if exists (select 1 from public.profiles where id = v_user)
+     or exists (select 1 from auth.users where id = v_user)
+     or exists (select 1 from public.user_subscriptions where user_id = v_user) then
+    raise exception 'FALLO: el usuario no se eliminó por completo';
+  end if;
+
+  raise notice 'OK: broadcast, campanita, gratis para siempre y borrado de usuarios';
+end
+$$;
+
 do $$
 begin
   raise notice '=== TODAS LAS PRUEBAS DE BASE DE DATOS PASARON ===';

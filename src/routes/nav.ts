@@ -26,7 +26,7 @@ export const navItems: NavItem[] = [
   { to: '/suscripcion', label: 'Suscripción', icon: CardIcon, bottom: true },
   { to: '/perfil', label: 'Perfil', icon: UserIcon },
   { to: '/configuracion', label: 'Configuración', icon: SettingsIcon },
-  { to: '/admin', label: 'Administración', icon: ShieldIcon, adminOnly: true },
+  { to: '/admin', label: 'Admin', icon: ShieldIcon, adminOnly: true },
 ]
 
 export function visibleNavItems(isAdmin: boolean): NavItem[] {

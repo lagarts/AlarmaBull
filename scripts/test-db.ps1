@@ -73,6 +73,7 @@ try {
     'supabase\migrations\0003_rls.sql',
     'supabase\migrations\0004_seed.sql',
     'supabase\migrations\0005_seed_emergency_contacts.sql',
+    'supabase\migrations\0006_admin_notifications.sql',
     'tests\db\10_tests.sql'
   )
 

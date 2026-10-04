@@ -8,9 +8,10 @@ type AppShellProps = {
   isAdmin?: boolean
   communityName?: string
   headerRight?: ReactNode
+  sidebarFooter?: ReactNode
 }
 
-export function AppShell({ isAdmin = false, communityName, headerRight }: AppShellProps) {
+export function AppShell({ isAdmin = false, communityName, headerRight, sidebarFooter }: AppShellProps) {
   const items = visibleNavItems(isAdmin)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -43,7 +44,7 @@ export function AppShell({ isAdmin = false, communityName, headerRight }: AppShe
           ))}
         </nav>
 
-        <div className="border-t border-white/10 pt-4">{headerRight}</div>
+        <div className="border-t border-white/10 pt-4">{sidebarFooter ?? headerRight}</div>
       </aside>
 
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-navy-100 bg-white px-4 py-3 lg:hidden">

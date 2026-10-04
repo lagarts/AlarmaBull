@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthProvider'
 import { AppShell } from './components/layout/AppShell'
+import { HeaderActions } from './components/layout/HeaderActions'
 import { PublicOnly, RequireAuth } from './routes/guards'
 import {
   AdminPage,
@@ -22,7 +23,13 @@ import {
 
 function ShellWithAuth() {
   const { isAdmin } = useAuth()
-  return <AppShell isAdmin={isAdmin} />
+  return (
+    <AppShell
+      isAdmin={isAdmin}
+      sidebarFooter={<HeaderActions isAdmin={isAdmin} tone="dark" />}
+      headerRight={<HeaderActions isAdmin={isAdmin} tone="light" />}
+    />
+  )
 }
 
 /**
