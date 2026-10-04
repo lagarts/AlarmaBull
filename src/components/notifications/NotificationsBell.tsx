@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { listMyNotifications, markAllNotificationsRead, markNotificationRead } from '../../data'
 import type { AppNotification } from '../../data/types'
 import { useAuth } from '../../context/AuthProvider'
@@ -30,6 +30,10 @@ export function NotificationsBell({ tone = 'light' }: { tone?: Tone }) {
   const [open, setOpen] = useState(false)
   const query = useAsync<AppNotification[]>(() => listMyNotifications(), [])
 
+  // La campanita se monta dos veces (sidebar y encabezado): cada instancia
+  // necesita su propio tópico porque supabase reutiliza canales por nombre.
+  const instanceId = useId().replace(/[^a-zA-Z0-9]/g, '')
+
   const readAction = useAction(async (id: string) => {
     await markNotificationRead(id)
     return true
@@ -45,7 +49,7 @@ export function NotificationsBell({ tone = 'light' }: { tone?: Tone }) {
     if (!user?.id) return
     const supabase = requireSupabase()
     const channel = supabase
-      .channel(`notifications-${user.id}`)
+      .channel(`notifications-${user.id}-${instanceId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
@@ -55,7 +59,7 @@ export function NotificationsBell({ tone = 'light' }: { tone?: Tone }) {
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [user?.id, reload])
+  }, [user?.id, instanceId, reload])
 
   const items = query.data ?? []
   const unread = items.filter((item) => !item.read_at).length
