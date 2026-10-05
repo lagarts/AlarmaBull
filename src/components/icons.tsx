@@ -129,3 +129,48 @@ export const AlertTriangleIcon = (p: IconProps) => (
   </Base>
 )
 
+export const HeartCheckIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 20.3c-4.6-3-7.6-6-7.6-9.6a4.1 4.1 0 0 1 7.6-2.1 4.1 4.1 0 0 1 7.6 2.1c0 3.6-3 6.6-7.6 9.6Z" />
+    <path d="m8.9 12.2 2.1 2.1 4.1-4.3" />
+  </Base>
+)
+
+export const ClockIcon = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.2V12l3 1.8" />
+  </Base>
+)
+
+export const ShareIcon = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="17.5" cy="6" r="2.5" />
+    <circle cx="6.5" cy="12" r="2.5" />
+    <circle cx="17.5" cy="18" r="2.5" />
+    <path d="m8.7 10.8 6.6-3.5M8.7 13.2l6.6 3.5" />
+  </Base>
+)
+
+export const LinkIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1.2 1.2" />
+    <path d="M13.5 10.5a3.5 3.5 0 0 0-5 0L6 13a3.5 3.5 0 0 0 5 5l1.2-1.2" />
+  </Base>
+)
+
+export const PlusIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 5.5v13M5.5 12h13" />
+  </Base>
+)
+
+export const TrashIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4.5 7h15M9.5 7V5.2a1.2 1.2 0 0 1 1.2-1.2h2.6a1.2 1.2 0 0 1 1.2 1.2V7" />
+    <path d="M6.5 7v11.8A1.7 1.7 0 0 0 8.2 20.5h7.6a1.7 1.7 0 0 0 1.7-1.7V7" />
+    <path d="M10.5 11v5.5M13.5 11v5.5" />
+  </Base>
+)
+
+

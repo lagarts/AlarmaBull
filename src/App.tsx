@@ -9,7 +9,12 @@ import {
   AlertDetailPage,
   AlertsHistoryPage,
   AuthPage,
+  ContactInvitePage,
   CreateCommunityPage,
+  EstoyBienContactsPage,
+  EstoyBienHistoryPage,
+  EstoyBienPage,
+  EstoyBienSettingsPage,
   HomePage,
   InvitesPage,
   JoinCommunityPage,
@@ -43,6 +48,9 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Link público de contacto: se responde sin cuenta (token en la URL). */}
+          <Route path="/contacto/aceptar" element={<ContactInvitePage />} />
+
           <Route element={<PublicOnly />}>
             <Route path="/" element={<Navigate to="/acceder" replace />} />
             <Route path="/acceder" element={<AuthPage />} />
@@ -54,6 +62,10 @@ export default function App() {
               <Route path="/inicio" element={<HomePage />} />
               <Route path="/alertas" element={<AlertsHistoryPage />} />
               <Route path="/alertas/:alertId" element={<AlertDetailPage />} />
+              <Route path="/estoy-bien" element={<EstoyBienPage />} />
+              <Route path="/estoy-bien/configuracion" element={<EstoyBienSettingsPage />} />
+              <Route path="/estoy-bien/contactos" element={<EstoyBienContactsPage />} />
+              <Route path="/estoy-bien/historial" element={<EstoyBienHistoryPage />} />
               <Route path="/integrantes" element={<MembersPage />} />
               <Route path="/invitaciones" element={<InvitesPage />} />
               <Route path="/suscripcion" element={<SubscriptionPage />} />

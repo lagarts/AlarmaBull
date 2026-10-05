@@ -248,6 +248,49 @@ comunidad:
    probar el webhook en sandbox según `docs/FASE9_mercadopago.md` (sección 6).
 6. **Contactos de emergencia** → deben aparecer en `/inicio` (911/100/107 con su fuente)
    y ser editables desde `/admin`.
+7. **Estoy Bien** → `/estoy-bien` → *Configurar y activar* → aceptar el uso preventivo y
+   guardar; verificar en BD:
+   `select user_id, enabled, reminder_time from public.estoy_bien_settings;`.
+   Confirmar con *ESTOY BIEN HOY* y comprobar `public.estoy_bien_checks`.
+   Luego, con el cron activo, avanzar la hora de recordatorio a 1 minuto antes, esperar y
+   revisar `public.estoy_bien_alerts` y `public.estoy_bien_reminders`.
+
+---
+
+## 10. Módulo Estoy Bien (FASE 12)
+
+Pendientes de este módulo, en orden:
+
+1. **Migración 0008** → SQL Editor de Supabase → pegar
+   `supabase/migrations/0008_estoy_bien.sql` completo y ejecutar (crea las 5 tablas,
+   las RPC del cliente, el tick y amplía `admin_metrics`).
+2. **Extensiones** → Database → Extensions → habilitar `pg_cron` y `pg_net`
+   (si el paso 4 no puede crearlas, las crea el SQL con un aviso).
+3. **Secreto para el cron** → SQL Editor:
+   ```sql
+   select vault.create_secret('EL_SERVICE_ROLE_KEY', 'estoy_bien_service_key');
+   ```
+   (Project Settings → API → `service_role`. Se usa sólo para que el cron llame a la
+   Edge Function; nunca se expone al navegador.)
+4. **Edge Function** → requiere `supabase login` y `supabase link --project-ref kbzyeiymvlzjyuepujvy`:
+   ```bash
+   supabase functions deploy estoy-bien-deliver
+   ```
+   Reutiliza los secretos VAPID del paso 5 (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`).
+   Verificar: `supabase secrets list`.
+5. **Cron** → SQL Editor → pegar `supabase/migrations/0009_cron.sql` y ejecutar;
+   debe aparecer el aviso `OK: el cron de Estoy Bien está activo.`
+   (job `estoy-bien`, cada minuto: `estoy_bien_tick()` + `estoy-bien-deliver`).
+6. **Verificación** → en BD:
+   ```sql
+   select jobid, schedule, command from cron.job where jobname = 'estoy-bien';
+   select status, count(*) from public.estoy_bien_reminders group by status;
+   ```
+
+Contactos personales (FASE 12): los avisos por **SMS/email** quedan en
+`public.estoy_bien_reminders` con `status = 'pending'` y
+`last_error = 'sin proveedor de SMS/email configurado'` hasta que se cargue un proveedor;
+sólo el push y la notificación in-app se envían hoy.
 
 ---
 
@@ -265,3 +308,7 @@ comunidad:
 | 7 | Cargar el precio del plan | pendiente |
 | 8 | Importar repo en Vercel + variables + deploy | pendiente |
 | 9 | Verificación final (app + `scripts\test-db.ps1`) | pendiente |
+| 10 | Pegar `0008_estoy_bien.sql` en Supabase | pendiente |
+| 11 | Habilitar `pg_cron` + `pg_net` y guardar `estoy_bien_service_key` | pendiente |
+| 12 | Desplegar `estoy-bien-deliver` | pendiente |
+| 13 | Pegar `0009_cron.sql` y verificar `cron.job` | pendiente |

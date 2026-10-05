@@ -1,6 +1,6 @@
 # Estado del proyecto — por fase
 
-Revisión del código del repositorio (3 de octubre de 2026). "Hecha" significa que la
+Revisión del código del repositorio (4 de octubre de 2026). "Hecha" significa que la
 funcionalidad está implementada y verificada en el código; lo que sólo requiere
 configuración, credenciales o despliegue queda aclarado en la columna "Qué falta"
 (checklist completo en [`DESPLEGUE.md`](DESPLEGUE.md)).
@@ -17,11 +17,14 @@ configuración, credenciales o despliegue queda aclarado en la columna "Qué fal
 | **FASE 8** — contactos de emergencia | Hecha | `src/components/alarm/EmergencyContactsCard.tsx` (pantalla de inicio), `src/data/emergency.ts`, `supabase/migrations/0005_seed_emergency_contacts.sql` (911/100/107, fuente `https://www.argentina.gob.ar/tema/emergencias`), edición desde el admin: `src/components/admin/AdminContactsPanel.tsx` + `emergencyContactsAdmin.ts` + RPC `admin_upsert_emergency_contact` / `admin_set_emergency_contact_active` | Ampliar y verificar contactos por provincia/localidad con fuentes oficiales antes de publicar (el seed trae sólo los 3 números nacionales) |
 | **FASE 9** — Mercado Pago | **Parcial** | `supabase/functions/mercadopago-create/index.ts`, `supabase/functions/mercadopago-webhook/index.ts` (firma `x-signature`, idempotencia, verificación de monto), `docs/FASE9_mercadopago.md` | 1) Credenciales y secretos (`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL`) + despliegue de las dos funciones. 2) Leer el resultado del `back_url` en `/suscripcion` (ver FASE 5). 3) Textos legales. 4) Prueba end-to-end en sandbox y, después, en producción |
 | **FASE 10** — panel admin, pruebas, Vercel | **Parcial** | `src/pages/AdminPage.tsx` + `src/components/admin/*` (métricas, usuarios, planes, contactos, pagos), `src/data/admin.ts`, RPC `admin_*` en `0002_functions.sql`; pruebas unitarias (`src/lib/datetime.test.ts`) y SQL (`tests/db/00_mock_supabase.sql`, `tests/db/10_tests.sql`, `scripts/test-db.ps1`); `vercel.json` | Despliegue: importar el repo en Vercel y cargar las variables de entorno (paso 8 de `docs/DESPLEGUE.md`). Además, el repositorio remoto sólo tiene el commit de la FASE 1: hay que subir las fases 2–10 |
+| **FASE 11** — campanita, panel admin, precio | Hecha | `src/components/notifications/NotificationsBell.tsx` (campanita + realtime en el header), `src/components/layout/LogoutButton.tsx`, `src/routes/nav.ts` (`/admin`), `src/components/ui/AppLogo.tsx` (logo desde `public/logo.png`); `0006_admin_notifications.sql` (`admin_broadcast_notifications`, `admin_metrics`, precio del plan en 3000 ARS), `0007_profile_grant.sql` (fix de permisos de `profiles`) | Nada |
+| **FASE 12** — módulo Estoy Bien | Hecha (código + pruebas) | **BD**: `supabase/migrations/0008_estoy_bien.sql` (tablas `estoy_bien_*`, RPC `estoy_bien_*`, `admin_checkin_alerts`, claves `checkin_*` en `admin_metrics`) y `0009_cron.sql`; **pruebas**: `tests/db/11_estoy_bien_tests.sql` (29 aserciones en 14 bloques); **UI**: `src/pages/EstoyBien*.tsx`, `src/pages/ContactInvitePage.tsx`, `src/data/estoyBien.ts`, `src/components/admin/AdminCheckinPanel.tsx`, ruta `/estoy-bien` y link público `/contacto/aceptar`; **push**: `supabase/functions/estoy-bien-deliver/index.ts` | 1) Pegar `0008_estoy_bien.sql` en el SQL Editor (sin psql remoto). 2) Habilitar `pg_cron` + `pg_net`. 3) Guardar `estoy_bien_service_key` en Vault. 4) Desplegar `estoy-bien-deliver`. 5) Pegar `0009_cron.sql`. 6) Proveedor de SMS/email para avisos a contactos (hoy quedan `pending` con `last_error` explicativo). Checklist: sección 10 de `docs/DESPLEGUE.md` |
 
-Resumen: **la implementación de las 10 fases está completa en el código**; lo que falta es
-puesta en producción (Supabase, secretos, Vercel) más tres huecos concretos de producto:
-el manejo del resultado de Mercado Pago al volver del checkout, los textos legales y la
-ampliación de contactos de emergencia por localidad. No hay pantallas pendientes.
+Resumen: **la implementación de las 12 fases está completa en el código**; lo que falta es
+puesta en producción (Supabase, secretos, cron de Estoy Bien, Vercel) más tres huecos
+concretos de producto: el manejo del resultado de Mercado Pago al volver del checkout, los
+textos legales y la ampliación de contactos de emergencia por localidad (más el proveedor
+de SMS/email de Estoy Bien). No hay pantallas pendientes.
 
 ## Verificación ejecutada en esta revisión
 
@@ -30,8 +33,8 @@ ampliación de contactos de emergencia por localidad. No hay pantallas pendiente
 | `npm run typecheck` | OK (sin errores) |
 | `npm run lint` | OK (sin errores ni warnings) |
 | `npm run test` | OK: 1 archivo, 4 pruebas (`src/lib/datetime.test.ts`) |
-| `npm run build` | OK: `dist/` + `dist/sw.js` (PWA `injectManifest`, 15 entradas de precache) |
-| `powershell -ExecutionPolicy Bypass -File scripts\test-db.ps1` | OK: aplicó `00_mock_supabase.sql` + migraciones 0001–0005 + `10_tests.sql` sobre un PostgreSQL efímero; 16 aserciones `OK:` en 12 bloques `DO` (más el aviso final de cierre) |
+| `npm run build` | OK: `dist/` + `dist/sw.js` (PWA `injectManifest`, 17 entradas de precache) |
+| `powershell -ExecutionPolicy Bypass -File scripts\test-db.ps1` | OK: aplicó `00_mock_supabase.sql` + migraciones 0001–0008 + `10_tests.sql` + `11_estoy_bien_tests.sql` sobre un PostgreSQL efímero; 45 aserciones `OK:` en 26 bloques `DO` (16 de FASE 10 y 29 de FASE 12, más el aviso final de cierre) |
 
 ## Discrepancias encontradas entre docs y código
 
@@ -39,9 +42,9 @@ ampliación de contactos de emergencia por localidad. No hay pantallas pendiente
    **1 archivo con 4 pruebas**: se eliminaron `src/pages/WelcomePage.tsx` y
    `WelcomePage.test.tsx` en la FASE 2 (no hay landing). El resto de la tabla sigue en verde.
 2. **`docs/ARQUITECTURA.md` §4**: la tabla de rutas todavía figura `/` = "Bienvenida" (Fase 1)
-   y `/admin` = "Fase 12". Hoy `/` redirige a la app (`src/App.tsx`) y el panel admin es
-   **FASE 10** (no existe una FASE 12). Aclarado en la sección
-   "Actualización (fases 2–10)" de ese documento.
+   y `/admin` = "Fase 12". Hoy `/` redirige a la app (`src/App.tsx`), el panel admin es la
+   **FASE 10** y la **FASE 12** es el módulo Estoy Bien (`/estoy-bien`). Aclarado en la
+   sección "Actualización (fases 2–10)" de ese documento; sigue desactualizada.
 3. **`docs/ARQUITECTURA.md` §12**: apuntaba a un "listado obligatorio del proyecto (§14)"
    que no existe en el documento; el enlace se redirigió a `docs/ESTADO.md`.
 4. **`docs/FASE7_push.md` §12**: marcaba dos pendientes que **ya están resueltos** en el
@@ -53,9 +56,9 @@ ampliación de contactos de emergencia por localidad. No hay pantallas pendiente
    es `https://alarma-bull.vercel.app` (misma que figura como homepage del repo en GitHub).
 6. **`supabase/migrations/0004_seed.sql`** (última línea) remite a
    `docs/FASE8_emergencias.md`, archivo que **no existe** en `docs/`.
-7. **Conteo de pruebas SQL**: se piden/indicaban "17 pruebas"; `10_tests.sql` emite
-   **16 aserciones `OK:`** agrupadas en 12 bloques `DO` (el total de avisos NOTICE es 17
-   si se cuenta el cierre `=== TODAS LAS PRUEBAS DE BASE DE DATOS PASARON ===`).
-8. **Repositorio remoto desactualizado**: `origin` tiene un único commit (FASE 1) y 43
-   archivos rastreados; `vercel.json`, `supabase/`, `scripts/`, `tests/` y las páginas de
-   las fases 2–10 están sólo en el working copy, sin commitear.
+7. **Conteo de pruebas SQL**: `10_tests.sql` emite **16 aserciones `OK:`** en 12 bloques
+   `DO` y `11_estoy_bien_tests.sql` **29 aserciones `OK:`** en 14 bloques: 45 en total,
+   más los avisos de cierre de cada archivo.
+8. **`docs/sql/aplicar_migraciones.sql`**: sólo concatenó las migraciones 0001–0005;
+   0006, 0007, 0008 y 0009 se pegan desde sus archivos individuales en
+   `supabase/migrations/`.

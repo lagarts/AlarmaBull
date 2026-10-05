@@ -35,6 +35,14 @@ export function AdminMetricsPanel() {
         { label: 'Pago vencido', value: countLabel(data, 'subscriptions_past_due') },
         { label: 'Suscripciones vencidas', value: countLabel(data, 'subscriptions_expired') },
         { label: 'Ingresos del mes', value: revenueLabel(data) },
+        { label: 'Estoy Bien activos', value: countLabel(data, 'checkin_enabled') },
+        { label: 'Confirmaron hoy', value: countLabel(data, 'checkin_confirmed_today') },
+        { label: 'Alertas Estoy Bien', value: countLabel(data, 'checkin_alerts_open') },
+        { label: 'Push fallidos (Estoy Bien)', value: countLabel(data, 'checkin_push_failed') },
+        {
+          label: 'Contactos pendientes',
+          value: countLabel(data, 'checkin_contacts_pending'),
+        },
       ]
     : []
 

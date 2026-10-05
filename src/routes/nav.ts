@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import {
   BellIcon,
   CardIcon,
+  HeartCheckIcon,
   HomeIcon,
   SettingsIcon,
   ShieldIcon,
@@ -21,6 +22,7 @@ export type NavItem = {
 export const navItems: NavItem[] = [
   { to: '/inicio', label: 'Inicio', icon: HomeIcon, bottom: true },
   { to: '/alertas', label: 'Alertas', icon: BellIcon, bottom: true },
+  { to: '/estoy-bien', label: 'Estoy Bien', icon: HeartCheckIcon, bottom: true },
   { to: '/integrantes', label: 'Integrantes', icon: UsersIcon, bottom: true },
   { to: '/invitaciones', label: 'Invitaciones', icon: TicketIcon },
   { to: '/suscripcion', label: 'Suscripción', icon: CardIcon, bottom: true },
