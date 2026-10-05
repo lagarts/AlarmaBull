@@ -207,7 +207,8 @@ FASE 2 y la FASE 10. Estado detallado por fase: `docs/ESTADO.md`.
 - **No hay landing**: la tabla de la sección 4 sigue listando `/` como "Bienvenida";
   desde la FASE 2 la raíz redirige a la aplicación (`src/App.tsx`): a `/acceder` si no hay
   sesión y a `/inicio` si la hay. `WelcomePage.tsx` y `makePlaceholder.tsx` se eliminaron.
-- `/admin` es **FASE 10**, no "fase 12" (no existe una FASE 12 en el plan del proyecto).
+- `/admin` es **FASE 10**. La **FASE 12** existe desde el 4/10/2026 y es el módulo
+  *Estoy Bien* (`/estoy-bien`), no el panel admin.
 - Todas las rutas de la tabla tienen pantalla real (no quedan placeholders). Sobra
   `src/pages/PageStub.tsx`: componente de relleno sin uso.
 - Ruta comodín `*` → `src/pages/NotFoundPage.tsx`.

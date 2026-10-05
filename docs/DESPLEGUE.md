@@ -259,33 +259,51 @@ comunidad:
 
 ## 10. Módulo Estoy Bien (FASE 12)
 
-Pendientes de este módulo, en orden:
+Estado al 4/10/2026:
 
-1. **Migración 0008** → SQL Editor de Supabase → pegar
-   `supabase/migrations/0008_estoy_bien.sql` completo y ejecutar (crea las 5 tablas,
-   las RPC del cliente, el tick y amplía `admin_metrics`).
-2. **Extensiones** → Database → Extensions → habilitar `pg_cron` y `pg_net`
-   (si el paso 4 no puede crearlas, las crea el SQL con un aviso).
-3. **Secreto para el cron** → SQL Editor:
+1. [x] **Migración 0008** aplicada en el SQL Editor (verificado por HTTP: la RPC
+   `estoy_bien_get_state` existe y está revocada de `anon`).
+2. [x] **Extensiones** `pg_cron` + `pg_net` habilitadas (las usó el paso 5 sin avisos).
+3. [x] **Secreto para el cron** → SQL Editor:
    ```sql
    select vault.create_secret('EL_SERVICE_ROLE_KEY', 'estoy_bien_service_key');
    ```
    (Project Settings → API → `service_role`. Se usa sólo para que el cron llame a la
-   Edge Function; nunca se expone al navegador.)
-4. **Edge Function** → requiere `supabase login` y `supabase link --project-ref kbzyeiymvlzjyuepujvy`:
+   Edge Function; nunca se expone al navegador.) Verificado el 4/10: prefijo
+   `eyJhbGciOiJIUzI1NiIsInR`, largo ≈ 176.
+4. [x] **Edge Functions** desplegadas con CLI (`supabase login` +
+   `supabase link --project-ref kbzyeiymvlzjyuepujvy`):
    ```bash
+   supabase functions deploy trigger-alert
+   supabase functions deploy mercadopago-create
+   supabase functions deploy mercadopago-webhook --no-verify-jwt
    supabase functions deploy estoy-bien-deliver
    ```
-   Reutiliza los secretos VAPID del paso 5 (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`).
-   Verificar: `supabase secrets list`.
-5. **Cron** → SQL Editor → pegar `supabase/migrations/0009_cron.sql` y ejecutar;
-   debe aparecer el aviso `OK: el cron de Estoy Bien está activo.`
+   Secretos VAPID cargados: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
+   `MP_ACCESS_TOKEN` sigue sin cargar → `mercadopago-create` responde
+   "Configuración incompleta del servidor".
+5. [x] **Cron** → `supabase/migrations/0009_cron.sql` aplicado; salió el aviso
+   `OK: el cron de Estoy Bien está activo.`
    (job `estoy-bien`, cada minuto: `estoy_bien_tick()` + `estoy-bien-deliver`).
-6. **Verificación** → en BD:
-   ```sql
-   select jobid, schedule, command from cron.job where jobname = 'estoy-bien';
-   select status, count(*) from public.estoy_bien_reminders group by status;
-   ```
+6. [x] **Verificación** (4/10) → en BD:
+    ```sql
+    select jobid, schedule, command from cron.job where jobname = 'estoy-bien';
+    select name from vault.decrypted_secrets where name = 'estoy_bien_service_key';
+    select status, count(*) from public.estoy_bien_reminders group by status;
+    select jobid, status, return_message, start_time
+      from cron.job_run_details
+     order by start_time desc limit 5;
+    select id, status_code, content from net._http_response order by id desc limit 5;
+    ```
+    Resultado: job `1` corriendo cada minuto con `status = 'succeeded'` y
+    `net._http_response` devolviendo `200` +
+    `{"processed":0,"sent":0,"failed":0,"skipped":0}` (0 porque todavía no hay
+    avisos push pendientes).
+
+> **Nota:** el cron manda la `service_role` del Vault como `Authorization`. La función
+> acepta esa clave **o** cualquier JWT del proyecto con claim `role = "service_role"`
+> (`jwtRole()` en `estoy-bien-deliver/index.ts`), porque el valor de
+> `SUPABASE_SERVICE_ROLE_KEY` del entorno no siempre coincide con la clave legacy.
 
 Contactos personales (FASE 12): los avisos por **SMS/email** quedan en
 `public.estoy_bien_reminders` con `status = 'pending'` y
@@ -298,17 +316,17 @@ sólo el push y la notificación in-app se envían hoy.
 
 | # | Paso | Estado |
 | --- | --- | --- |
-| 0 | Subir fases 2–10 a GitHub | pendiente (remoto sólo tiene la FASE 1) |
-| 1 | Proyecto Supabase + migraciones 0001–0005 | pendiente |
-| 2 | `.env` local | pendiente |
-| 3 | Auth: email y confirmación + URL Configuration | pendiente |
-| 4 | Promover al primer `admin_general` | pendiente |
-| 5 | Desplegar 3 Edge Functions + 5 secretos | pendiente |
-| 6 | Claves VAPID (Supabase + Vercel) | pendiente |
-| 7 | Cargar el precio del plan | pendiente |
-| 8 | Importar repo en Vercel + variables + deploy | pendiente |
-| 9 | Verificación final (app + `scripts\test-db.ps1`) | pendiente |
-| 10 | Pegar `0008_estoy_bien.sql` en Supabase | pendiente |
-| 11 | Habilitar `pg_cron` + `pg_net` y guardar `estoy_bien_service_key` | pendiente |
-| 12 | Desplegar `estoy-bien-deliver` | pendiente |
-| 13 | Pegar `0009_cron.sql` y verificar `cron.job` | pendiente |
+| 0 | Subir fases 2–10 a GitHub | listo (mínimo `3afea58`, rama `main`) |
+| 1 | Proyecto Supabase + migraciones 0001–0009 | listo (0008 y 0009 pegadas el 4/10) |
+| 2 | `.env` local | listo |
+| 3 | Auth: email y confirmación + URL Configuration | por confirmar |
+| 4 | Promover al primer `admin_general` | por confirmar |
+| 5 | Desplegar 4 Edge Functions + secretos | listo (VAPID cargados; falta `MP_ACCESS_TOKEN`) |
+| 6 | Claves VAPID (Supabase + Vercel) | listo |
+| 7 | Cargar el precio del plan | por confirmar |
+| 8 | Importar repo en Vercel + variables + deploy | listo |
+| 9 | Verificación final (app + `scripts\test-db.ps1`) | por confirmar |
+| 10 | Pegar `0008_estoy_bien.sql` en Supabase | listo |
+| 11 | Habilitar `pg_cron` + `pg_net` y guardar `estoy_bien_service_key` | listo (verificado 4/10) |
+| 12 | Desplegar `estoy-bien-deliver` | listo (4 funciones desplegadas) |
+| 13 | Pegar `0009_cron.sql` y verificar `cron.job` | listo (aviso `OK: ... está activo.`) |

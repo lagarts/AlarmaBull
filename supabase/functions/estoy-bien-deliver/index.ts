@@ -73,6 +73,23 @@ function logError(context: string, error: unknown): void {
   console.error(`[estoy-bien-deliver] ${context}: ${safeErrorText(error)}`);
 }
 
+/**
+ * Claim `role` de un JWT. No verifica la firma: eso ya lo hizo el gateway
+ * (verify_jwt) antes de dejar pasar la petición.
+ */
+function jwtRole(token: string): string | null {
+  const part = token.split(".")[1];
+  if (!part) return null;
+  try {
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded)) as { role?: unknown };
+    return typeof payload.role === "string" ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
 async function markReminder(
   db: SupabaseClient,
   reminder: ReminderRow,
@@ -130,7 +147,10 @@ Deno.serve(async (req) => {
     const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
 
     // 1) Quién invoca: el cron manda el service_role key; el usuario manda su JWT.
-    const isServiceCall = Boolean(bearer) && bearer === serviceKey;
+    //    Se acepta la clave literal del entorno o cualquier JWT del proyecto con
+    //    claim role = service_role (el gateway ya validó la firma).
+    const isServiceCall =
+      Boolean(bearer) && (bearer === serviceKey || jwtRole(bearer) === "service_role");
     let callerId: string | null = null;
 
     if (!isServiceCall) {
