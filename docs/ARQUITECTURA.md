@@ -90,8 +90,10 @@ Migraciones versionadas en `supabase/migrations/`.
 - `communities` → `created_by`, `name`, `status`.
 - `community_members` → `community_id` + `user_id` únicos, `role`
   (`admin` | `member`), `membership_status` (`pending` | `active` | `removed`).
-- `community_invites` → `token_hash` (nunca el token en claro), `expires_at`,
-  `revoked_at`, `max_uses`, `use_count`.
+- `community_invites` → `token_hash` (valida el ingreso) + `token` (link en
+  claro para que el admin lo copie cuando quiera; RLS: sólo admin/creador),
+  `expires_at` (null = sin vencimiento), `revoked_at`, `max_uses`
+  (null = usos ilimitados), `use_count`.
 
 ### Comercial
 

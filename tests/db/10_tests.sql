@@ -128,7 +128,7 @@ begin
   end if;
 
   if exists (select 1 from public.community_invites where token_hash = v_token) then
-    raise exception 'FALLO: se guardó el token en claro';
+    raise exception 'FALLO: el token no se guardó hasheado';
   end if;
 
   perform set_config('test.token_a', v_token, false);

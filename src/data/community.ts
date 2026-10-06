@@ -16,8 +16,8 @@ export function joinCommunity(token: string): Promise<string> {
 
 export function generateInvite(
   communityId: string,
-  ttlSeconds: number,
-  maxUses: number,
+  ttlSeconds: number | null,
+  maxUses: number | null,
 ): Promise<string> {
   return rpc<string>('generate_invite', {
     p_community_id: communityId,
@@ -56,7 +56,7 @@ export async function listInvites(communityId: string): Promise<InviteRow[]> {
   const supabase = requireSupabase()
   const { data, error } = await supabase
     .from('community_invites')
-    .select('id, expires_at, revoked_at, max_uses, use_count, created_at, created_by')
+    .select('id, token, expires_at, revoked_at, max_uses, use_count, created_at, created_by')
     .eq('community_id', communityId)
     .order('created_at', { ascending: false })
     .limit(50)

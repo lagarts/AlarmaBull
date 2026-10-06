@@ -52,9 +52,10 @@ export interface CommunityMember {
 
 export interface InviteRow {
   id: string
+  token: string | null
   expires_at: string | null
   revoked_at: string | null
-  max_uses: number
+  max_uses: number | null
   use_count: number
   created_at: string
   created_by: string
