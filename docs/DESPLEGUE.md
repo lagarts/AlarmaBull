@@ -319,19 +319,20 @@ caracteres) a todos los vecinos, con la misma cadena que la alerta roja:
 `trigger_alert` → `alert_recipients` → `notification_jobs` → Edge Function `trigger-alert`
 → Web Push (título *"Precaución vecinal"*, cuerpo = mensaje) → historial y detalle.
 
-**Orden importa** (si no, el botón de la app y la Edge Function fallan):
+**Orden importa** (si no, el botón de la app y la Edge Function fallan). Hecho el 5/10/2026:
 
-1. [ ] **Migración 0010** → SQL Editor de Supabase → pegar
+1. [x] **Migración 0010** → SQL Editor de Supabase → pegar
    `supabase/migrations/0010_precaucion.sql` completo y ejecutar. Crea el tipo
    `alert_severity`, las columnas `alerts.severity`/`alerts.message` y reemplaza
    `trigger_alert` por la versión con `p_severity`/`p_message`. Es compatible con la app
-   publicada actual: el frontend viejo sigue llamando a la RPC sin problemas.
-2. [ ] **Edge Function** → redesplegar `trigger-alert` (lee `severity` y `message` para
+   publicada: verificado por HTTP, la RPC responde `No autenticado` tanto con
+   `p_severity` como sin él.
+2. [x] **Edge Function** → redesplegada `trigger-alert` (lee `severity` y `message` para
    armar el payload del push):
    ```bash
    supabase functions deploy trigger-alert
    ```
-3. [ ] **Frontend** → commit + push (Vercel redespliega solo).
+3. [x] **Frontend** → commit + push (Vercel redespliega solo).
 4. [ ] **Verificación** → en la app: *PRECAUCIÓN* → escribir el mensaje → enviar; en BD:
    ```sql
    select id, severity, message, created_at from public.alerts order by created_at desc limit 3;
@@ -360,5 +361,5 @@ caracteres) a todos los vecinos, con la misma cadena que la alerta roja:
 | 11 | Habilitar `pg_cron` + `pg_net` y guardar `estoy_bien_service_key` | listo (verificado 4/10) |
 | 12 | Desplegar `estoy-bien-deliver` | listo (4 funciones desplegadas) |
 | 13 | Pegar `0009_cron.sql` y verificar `cron.job` | listo (aviso `OK: ... está activo.`) |
-| 14 | Pegar `0010_precaucion.sql` (FASE 13) | **pendiente — antes de publicar** |
-| 15 | Redesplegar `trigger-alert` + push del frontend (FASE 13) | pendiente (va después del 14) |
+| 14 | Pegar `0010_precaucion.sql` (FASE 13) | listo (5/10/2026) |
+| 15 | Redesplegar `trigger-alert` + push del frontend (FASE 13) | listo (5/10/2026); falta la prueba manual en la app |
