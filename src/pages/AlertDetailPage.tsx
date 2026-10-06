@@ -7,6 +7,7 @@ import type { AlertRecipientRow, AlertRow } from '../data/types'
 import { Card, CardBody, PageHeader } from '../components/ui/Card'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/Feedback'
 import { AlertStatusPill, alertStatusLabel } from '../components/alarm/AlertStatusPill'
+import { AlertSeverityPill, severityLabel } from '../components/alarm/AlertSeverityPill'
 import { formatDateTime } from '../lib/datetime'
 
 const linkButtonClass =
@@ -101,7 +102,12 @@ export function AlertDetailPage() {
       <PageHeader
         title="Detalle de alerta"
         subtitle={formatDateTime(alert.created_at)}
-        actions={<AlertStatusPill status={alert.status} />}
+        actions={
+          <span className="inline-flex items-center gap-2">
+            <AlertSeverityPill severity={alert.severity} />
+            <AlertStatusPill status={alert.status} />
+          </span>
+        }
       />
 
       <Card>
@@ -109,12 +115,22 @@ export function AlertDetailPage() {
           <dl className="grid gap-4 sm:grid-cols-2">
             <DetailField label="Fecha y hora" value={formatDateTime(alert.created_at)} />
             <DetailField label="Emisor" value={alert.triggerer?.full_name ?? 'Vecino'} />
+            <DetailField label="Tipo" value={severityLabel(alert.severity)} />
             <DetailField label="Estado" value={alertStatusLabel(alert.status)} />
             <DetailField label="Ubicación" value={location} />
             {alert.resolved_at && (
               <DetailField label="Resuelta el" value={formatDateTime(alert.resolved_at)} />
             )}
           </dl>
+
+          {alert.severity === 'precaucion' && alert.message && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                Mensaje del aviso
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-navy-900">{alert.message}</p>
+            </div>
+          )}
         </CardBody>
       </Card>
 

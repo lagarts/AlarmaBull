@@ -20,7 +20,9 @@ configuración, credenciales o despliegue queda aclarado en la columna "Qué fal
 | **FASE 11** — campanita, panel admin, precio | Hecha | `src/components/notifications/NotificationsBell.tsx` (campanita + realtime en el header), `src/components/layout/LogoutButton.tsx`, `src/routes/nav.ts` (`/admin`), `src/components/ui/AppLogo.tsx` (logo desde `public/logo.png`); `0006_admin_notifications.sql` (`admin_broadcast_notifications`, `admin_metrics`, precio del plan en 3000 ARS), `0007_profile_grant.sql` (fix de permisos de `profiles`) | Nada |
 | **FASE 12** — módulo Estoy Bien | Hecha y en producción (4/10/2026) | **BD**: `supabase/migrations/0008_estoy_bien.sql` (tablas `estoy_bien_*`, RPC `estoy_bien_*`, `admin_checkin_alerts`, claves `checkin_*` en `admin_metrics`) y `0009_cron.sql`; **pruebas**: `tests/db/11_estoy_bien_tests.sql` (29 aserciones en 14 bloques); **UI**: `src/pages/EstoyBien*.tsx`, `src/pages/ContactInvitePage.tsx`, `src/data/estoyBien.ts`, `src/components/admin/AdminCheckinPanel.tsx`, ruta `/estoy-bien` y link público `/contacto/aceptar`; **push**: `supabase/functions/estoy-bien-deliver/index.ts`; **cron**: job `estoy-bien` cada minuto + secreto `estoy_bien_service_key` en Vault → `net._http_response` responde `200` | 1) Proveedor de SMS/email para avisos a contactos (hoy quedan `pending` con `last_error` explicativo). 2) Prueba manual en la app (activar, esperar vencimiento, confirmar). Checklist: sección 10 de `docs/DESPLEGUE.md` |
 
-Resumen: **la implementación de las 12 fases está completa en el código**; lo que falta es
+| **FASE 13** — aviso de precaución con mensaje | Hecha (código + pruebas, 5/10/2026) | **BD**: `supabase/migrations/0010_precaucion.sql` (enum `alert_severity`, columnas `alerts.severity`/`alerts.message`, `trigger_alert` con `p_severity`/`p_message` y cooldown por severidad: 10 s alerta / 15 s aviso); **pruebas**: `tests/db/12_precaucion_tests.sql` (9 aserciones en 4 bloques); **UI**: botón amarillo PRECAUCIÓN en `src/pages/HomePage.tsx`, `src/components/alarm/PrecautionDialog.tsx`, `src/components/alarm/AlertSeverityPill.tsx`, mensaje en `AlertListItem` y `AlertDetailPage`, variante `warning` en `Button`, color `av-yellow` en `src/styles/index.css`; **push**: payload con el texto del vecino en `supabase/functions/trigger-alert/index.ts` | 1) Pegar `0010_precaucion.sql` en el SQL Editor **antes** de publicar frontend/Edge Function (si no, `trigger_alert` no encuentra la función nueva). 2) Redesplegar `trigger-alert`. Checklist: sección 11 de `docs/DESPLEGUE.md` |
+
+Resumen: **la implementación de las 13 fases está completa en el código**; lo que falta es
 puesta en producción (Supabase, secretos, cron de Estoy Bien, Vercel) más tres huecos
 concretos de producto: el manejo del resultado de Mercado Pago al volver del checkout, los
 textos legales y la ampliación de contactos de emergencia por localidad (más el proveedor
@@ -34,7 +36,7 @@ de SMS/email de Estoy Bien). No hay pantallas pendientes.
 | `npm run lint` | OK (sin errores ni warnings) |
 | `npm run test` | OK: 1 archivo, 4 pruebas (`src/lib/datetime.test.ts`) |
 | `npm run build` | OK: `dist/` + `dist/sw.js` (PWA `injectManifest`, 17 entradas de precache) |
-| `powershell -ExecutionPolicy Bypass -File scripts\test-db.ps1` | OK: aplicó `00_mock_supabase.sql` + migraciones 0001–0008 + `10_tests.sql` + `11_estoy_bien_tests.sql` sobre un PostgreSQL efímero; 45 aserciones `OK:` en 26 bloques `DO` (16 de FASE 10 y 29 de FASE 12, más el aviso final de cierre) |
+| `powershell -ExecutionPolicy Bypass -File scripts\test-db.ps1` | OK: aplicó `00_mock_supabase.sql` + migraciones 0001–0008 y 0010 + `10_tests.sql` + `11_estoy_bien_tests.sql` + `12_precaucion_tests.sql` sobre un PostgreSQL efímero; 54 aserciones `OK:` en 30 bloques `DO` (16 de FASE 10, 29 de FASE 12 y 9 de FASE 13, más el aviso final de cierre) |
 
 ## Discrepancias encontradas entre docs y código
 

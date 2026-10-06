@@ -44,6 +44,8 @@ type DeliveryStatus = "sent" | "failed";
 interface AlertRow {
   id: string;
   community_id: string;
+  severity?: string | null;
+  message?: string | null;
 }
 
 interface SubscriptionRow {
@@ -216,7 +218,7 @@ Deno.serve(async (req) => {
 
     const { data: alert, error: alertError } = await db
       .from("alerts")
-      .select("id, community_id")
+      .select("id, community_id, severity, message")
       .eq("id", alertId)
       .maybeSingle();
     if (alertError) {
@@ -272,10 +274,14 @@ Deno.serve(async (req) => {
     }
 
     // 6) Envío Web Push con idempotencia por (alerta, destinatario, suscripción).
+    //    Los avisos de precaución llevan el mensaje que escribió el vecino.
     const subject = Deno.env.get("VAPID_SUBJECT") || supabaseUrl;
+    const isPrecaution = alertRow.severity === "precaucion";
     const payload = JSON.stringify({
-      title: "¡Alerta vecinal!",
-      body: "Un vecino disparó la alarma",
+      title: isPrecaution ? "Precaución vecinal" : "¡Alerta vecinal!",
+      body: isPrecaution
+        ? (alertRow.message ?? "Un vecino mandó un aviso de precaución")
+        : "Un vecino disparó la alarma",
       url: `/alertas/${alertId}`,
     });
 

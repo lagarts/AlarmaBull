@@ -312,6 +312,36 @@ sólo el push y la notificación in-app se envían hoy.
 
 ---
 
+## 11. Aviso de precaución (FASE 13)
+
+El botón amarillo **PRECAUCIÓN** del inicio manda un mensaje de texto libre (1..200
+caracteres) a todos los vecinos, con la misma cadena que la alerta roja:
+`trigger_alert` → `alert_recipients` → `notification_jobs` → Edge Function `trigger-alert`
+→ Web Push (título *"Precaución vecinal"*, cuerpo = mensaje) → historial y detalle.
+
+**Orden importa** (si no, el botón de la app y la Edge Function fallan):
+
+1. [ ] **Migración 0010** → SQL Editor de Supabase → pegar
+   `supabase/migrations/0010_precaucion.sql` completo y ejecutar. Crea el tipo
+   `alert_severity`, las columnas `alerts.severity`/`alerts.message` y reemplaza
+   `trigger_alert` por la versión con `p_severity`/`p_message`. Es compatible con la app
+   publicada actual: el frontend viejo sigue llamando a la RPC sin problemas.
+2. [ ] **Edge Function** → redesplegar `trigger-alert` (lee `severity` y `message` para
+   armar el payload del push):
+   ```bash
+   supabase functions deploy trigger-alert
+   ```
+3. [ ] **Frontend** → commit + push (Vercel redespliega solo).
+4. [ ] **Verificación** → en la app: *PRECAUCIÓN* → escribir el mensaje → enviar; en BD:
+   ```sql
+   select id, severity, message, created_at from public.alerts order by created_at desc limit 3;
+   select status, count(*) from public.notification_jobs group by status;
+   ```
+   y en el teléfono del vecino debe llegar la notificación *"Precaución vecinal"* con el
+   texto. Cooldowns: 10 s para la alerta roja y 15 s para los avisos, **por separado**.
+
+---
+
 ## Resumen de pendientes manuales
 
 | # | Paso | Estado |
@@ -330,3 +360,5 @@ sólo el push y la notificación in-app se envían hoy.
 | 11 | Habilitar `pg_cron` + `pg_net` y guardar `estoy_bien_service_key` | listo (verificado 4/10) |
 | 12 | Desplegar `estoy-bien-deliver` | listo (4 funciones desplegadas) |
 | 13 | Pegar `0009_cron.sql` y verificar `cron.job` | listo (aviso `OK: ... está activo.`) |
+| 14 | Pegar `0010_precaucion.sql` (FASE 13) | **pendiente — antes de publicar** |
+| 15 | Redesplegar `trigger-alert` + push del frontend (FASE 13) | pendiente (va después del 14) |

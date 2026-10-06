@@ -60,12 +60,16 @@ export interface InviteRow {
   created_by: string
 }
 
+export type AlertSeverity = 'alerta' | 'precaucion'
+
 export interface AlertRow {
   id: string
   community_id: string
   triggered_by: string
   created_at: string
   status: AlertStatus
+  severity: AlertSeverity
+  message: string | null
   location_latitude: number | null
   location_longitude: number | null
   resolved_at: string | null
@@ -86,6 +90,8 @@ export interface TriggerAlertResult {
   alert_id: string
   duplicate: boolean
   recipients: number
+  severity?: AlertSeverity
+  message?: string | null
 }
 
 export interface EmergencyContact {

@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom'
 import { Card, CardBody, PageHeader } from '../components/ui/Card'
 import { EmptyState, ErrorState, Notice, Spinner } from '../components/ui/Feedback'
-import { ArrowRightIcon, SirenIcon } from '../components/icons'
+import { AlertTriangleIcon, ArrowRightIcon, SirenIcon } from '../components/icons'
 import { useAction, useAsync } from '../hooks/useAsync'
 import { useMyCommunity, useSubscription } from '../hooks/useCommunity'
 import { listAlerts, triggerAlert } from '../data'
@@ -10,6 +10,7 @@ import { dispatchAlertPush } from '../data/notifications'
 import type { AlertRow, TriggerAlertResult } from '../data/types'
 import { AlertListItem } from '../components/alarm/AlertListItem'
 import { ConfirmDialog } from '../components/alarm/ConfirmDialog'
+import { PrecautionDialog } from '../components/alarm/PrecautionDialog'
 import { EmergencyContactsCard } from '../components/alarm/EmergencyContactsCard'
 import { NoCommunityState } from '../components/alarm/NoCommunityState'
 import { SubscriptionChip } from '../components/alarm/SubscriptionChip'
@@ -32,8 +33,20 @@ export function HomePage() {
       triggerAlert(communityId, key, coords),
   )
 
+  const sendPrecaution = useAction(
+    (
+      communityId: string,
+      key: string,
+      coords: { latitude: number; longitude: number } | null,
+      message: string,
+    ) => triggerAlert(communityId, key, coords, 'precaucion', message),
+  )
+
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sending, setSending] = useState(false)
+  const [noticeOpen, setNoticeOpen] = useState(false)
+  const [noticeText, setNoticeText] = useState('')
+  const [sendingNotice, setSendingNotice] = useState(false)
   const [result, setResult] = useState<TriggerAlertResult | null>(null)
 
   useAlertsRealtime(community?.community_id, alertsState.reload)
@@ -42,6 +55,12 @@ export function HomePage() {
     setResult(null)
     sendAlert.clearError()
     setConfirmOpen(true)
+  }
+
+  const openNotice = () => {
+    setResult(null)
+    sendPrecaution.clearError()
+    setNoticeOpen(true)
   }
 
   const handleConfirm = async () => {
@@ -63,6 +82,30 @@ export function HomePage() {
       setConfirmOpen(false)
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleNoticeConfirm = async () => {
+    if (!community || sendingNotice) return
+    const message = noticeText.trim()
+    if (message.length < 3) return
+
+    setSendingNotice(true)
+    try {
+      const idempotencyKey = crypto.randomUUID()
+      const coords = await getCurrentCoords()
+      const sent = await sendPrecaution.run(community.community_id, idempotencyKey, coords, message)
+      if (sent) {
+        setResult(sent)
+        setNoticeText('')
+        alertsState.reload()
+        if (!sent.duplicate) {
+          void dispatchAlertPush(sent.alert_id)
+        }
+      }
+      setNoticeOpen(false)
+    } finally {
+      setSendingNotice(false)
     }
   }
 
@@ -94,13 +137,19 @@ export function HomePage() {
 
       {result && (
         <Notice tone={result.duplicate ? 'info' : 'success'}>
-          {result.duplicate
-            ? 'Esta alerta ya se había enviado'
-            : `Alerta enviada a ${result.recipients} ${result.recipients === 1 ? 'vecino' : 'vecinos'}`}
+          {result.severity === 'precaucion'
+            ? result.duplicate
+              ? 'Este aviso ya se había enviado'
+              : `Aviso enviado a ${result.recipients} ${result.recipients === 1 ? 'vecino' : 'vecinos'}`
+            : result.duplicate
+              ? 'Esta alerta ya se había enviado'
+              : `Alerta enviada a ${result.recipients} ${result.recipients === 1 ? 'vecino' : 'vecinos'}`}
         </Notice>
       )}
 
-      {sendAlert.error && <Notice tone="danger">{sendAlert.error}</Notice>}
+      {(sendAlert.error || sendPrecaution.error) && (
+        <Notice tone="danger">{sendAlert.error ?? sendPrecaution.error}</Notice>
+      )}
 
       <Card>
         <CardBody className="space-y-4">
@@ -121,6 +170,22 @@ export function HomePage() {
             <SirenIcon className="h-7 w-7" />
             ALERTA VECINAL
           </button>
+
+          <button
+            type="button"
+            onClick={openNotice}
+            disabled={!canAlert || sendingNotice || sendPrecaution.pending}
+            aria-describedby={canAlert ? undefined : 'alarm-blocked-reason'}
+            className="flex w-full items-center justify-center gap-3 rounded-3xl bg-av-yellow px-6 py-5 text-base font-black tracking-wide text-navy-900 shadow-card transition-colors hover:bg-av-yellow-dark disabled:cursor-not-allowed disabled:bg-navy-200 disabled:text-navy-600"
+          >
+            <AlertTriangleIcon className="h-6 w-6" />
+            PRECAUCIÓN
+          </button>
+
+          <p className="text-xs text-navy-600">
+            Para avisos que no son emergencias: escribís un mensaje y todos los vecinos lo
+            reciben en su notificación.
+          </p>
 
           {!canAlert && (
             <p id="alarm-blocked-reason" className="text-sm text-navy-600">
@@ -185,6 +250,15 @@ export function HomePage() {
         pending={sending}
         onConfirm={handleConfirm}
         onCancel={() => setConfirmOpen(false)}
+      />
+
+      <PrecautionDialog
+        open={noticeOpen}
+        value={noticeText}
+        pending={sendingNotice || sendPrecaution.pending}
+        onChange={setNoticeText}
+        onConfirm={handleNoticeConfirm}
+        onCancel={() => setNoticeOpen(false)}
       />
     </div>
   )

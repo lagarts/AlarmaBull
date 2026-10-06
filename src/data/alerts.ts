@@ -1,18 +1,26 @@
 import { requireSupabase } from '../lib/supabase'
 import { rpc, toAppError } from './client'
-import type { AlertRecipientRow, AlertRow, TriggerAlertResult } from './types'
+import type { AlertRecipientRow, AlertRow, AlertSeverity, TriggerAlertResult } from './types'
 
-/** Dispara la alarma. La clave de idempotencia evita dobles envíos. */
+/**
+ * Dispara la alarma (`alerta`) o un aviso de precaución con mensaje.
+ * La clave de idempotencia evita dobles envíos y el cooldown se aplica
+ * por separado para cada severidad en el servidor.
+ */
 export function triggerAlert(
   communityId: string,
   idempotencyKey: string,
   coords?: { latitude: number; longitude: number } | null,
+  severity: AlertSeverity = 'alerta',
+  message?: string | null,
 ): Promise<TriggerAlertResult> {
   return rpc<TriggerAlertResult>('trigger_alert', {
     p_community_id: communityId,
     p_idempotency_key: idempotencyKey,
     p_latitude: coords?.latitude ?? null,
     p_longitude: coords?.longitude ?? null,
+    p_severity: severity,
+    p_message: message ?? null,
   })
 }
 

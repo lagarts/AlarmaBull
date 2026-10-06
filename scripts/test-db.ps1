@@ -76,8 +76,10 @@ try {
     'supabase\migrations\0006_admin_notifications.sql',
     'supabase\migrations\0007_profile_grant.sql',
     'supabase\migrations\0008_estoy_bien.sql',
+    'supabase\migrations\0010_precaucion.sql',
     'tests\db\10_tests.sql',
-    'tests\db\11_estoy_bien_tests.sql'
+    'tests\db\11_estoy_bien_tests.sql',
+    'tests\db\12_precaucion_tests.sql'
   )
 
   foreach ($file in $files) {

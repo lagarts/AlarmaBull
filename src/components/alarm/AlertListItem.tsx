@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRightIcon } from '../icons'
 import { formatDateTime } from '../../lib/datetime'
 import type { AlertRow } from '../../data/types'
+import { AlertSeverityPill } from './AlertSeverityPill'
 import { AlertStatusPill } from './AlertStatusPill'
 import { relativeTime } from './relativeTime'
 
@@ -24,9 +25,13 @@ export function AlertListItem({
           <p className="truncate text-sm font-semibold text-navy-900">
             {alert.triggerer?.full_name ?? 'Vecino'}
           </p>
+          {alert.severity === 'precaucion' && alert.message && (
+            <p className="truncate text-xs font-medium text-navy-700">{alert.message}</p>
+          )}
           <p className="text-xs text-navy-600">{time}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <AlertSeverityPill severity={alert.severity} />
           <AlertStatusPill status={alert.status} />
           <ArrowRightIcon className="h-4 w-4 text-navy-400" />
         </div>
