@@ -73,7 +73,7 @@ export interface AlertRow {
   location_latitude: number | null
   location_longitude: number | null
   resolved_at: string | null
-  triggerer: { full_name: string | null } | null
+    triggerer: { full_name: string | null; address?: string | null } | null
 }
 
 export interface AlertRecipientRow {

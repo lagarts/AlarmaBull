@@ -115,6 +115,10 @@ export function AlertDetailPage() {
           <dl className="grid gap-4 sm:grid-cols-2">
             <DetailField label="Fecha y hora" value={formatDateTime(alert.created_at)} />
             <DetailField label="Emisor" value={alert.triggerer?.full_name ?? 'Vecino'} />
+            <DetailField
+              label="Dirección del emisor"
+              value={alert.triggerer?.address?.trim() || 'Sin dirección'}
+            />
             <DetailField label="Tipo" value={severityLabel(alert.severity)} />
             <DetailField label="Estado" value={alertStatusLabel(alert.status)} />
             <DetailField label="Ubicación" value={location} />

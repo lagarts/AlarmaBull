@@ -44,8 +44,14 @@ type DeliveryStatus = "sent" | "failed";
 interface AlertRow {
   id: string;
   community_id: string;
+  triggered_by: string;
   severity?: string | null;
   message?: string | null;
+}
+
+interface TriggererRow {
+  full_name?: string | null;
+  address?: string | null;
 }
 
 interface SubscriptionRow {
@@ -80,6 +86,11 @@ function safeErrorText(error: unknown): string {
 
 function logError(context: string, error: unknown): void {
   console.error(`[trigger-alert] ${context}: ${safeErrorText(error)}`);
+}
+
+/** Recorta el cuerpo del push para que la notificación no quede gigante. */
+function clipText(text: string, max = 200): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
 /**
@@ -218,7 +229,7 @@ Deno.serve(async (req) => {
 
     const { data: alert, error: alertError } = await db
       .from("alerts")
-      .select("id, community_id, severity, message")
+      .select("id, community_id, triggered_by, severity, message")
       .eq("id", alertId)
       .maybeSingle();
     if (alertError) {
@@ -229,6 +240,15 @@ Deno.serve(async (req) => {
       return json({ error: "Alerta no encontrada" }, 404);
     }
     const alertRow = alert as AlertRow;
+
+    // Emisor de la alerta: nombre y dirección que cargó en el perfil.
+    // La dirección se muestra en la lista de alertas y en la notificación.
+    const { data: triggererData } = await db
+      .from("profiles")
+      .select("full_name, address")
+      .eq("id", alertRow.triggered_by)
+      .maybeSingle();
+    const triggerer = (triggererData ?? null) as TriggererRow | null;
 
     // 4) El usuario debe ser integrante activo de la comunidad de la alerta.
     const { data: membership, error: membershipError } = await db
@@ -274,14 +294,25 @@ Deno.serve(async (req) => {
     }
 
     // 6) Envío Web Push con idempotencia por (alerta, destinatario, suscripción).
-    //    Los avisos de precaución llevan el mensaje que escribió el vecino.
+    //    El cuerpo lleva la dirección del emisor y, si es precaución, su mensaje.
     const subject = Deno.env.get("VAPID_SUBJECT") || supabaseUrl;
     const isPrecaution = alertRow.severity === "precaucion";
+    const who = (triggerer?.full_name ?? "").trim();
+    const where = (triggerer?.address ?? "").trim();
+
+    let alertBody = "Un vecino disparó la alarma";
+    if (where) {
+      alertBody = `${who || "Un vecino"} · ${where}`;
+    } else if (who) {
+      alertBody = `${who} disparó la alarma`;
+    }
+
+    let precautionBody = alertRow.message ?? "Un vecino mandó un aviso de precaución";
+    if (where) precautionBody = `${where} · ${precautionBody}`;
+
     const payload = JSON.stringify({
       title: isPrecaution ? "Precaución vecinal" : "¡Alerta vecinal!",
-      body: isPrecaution
-        ? (alertRow.message ?? "Un vecino mandó un aviso de precaución")
-        : "Un vecino disparó la alarma",
+      body: clipText(isPrecaution ? precautionBody : alertBody),
       url: `/alertas/${alertId}`,
     });
 

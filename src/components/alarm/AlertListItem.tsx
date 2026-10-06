@@ -25,6 +25,11 @@ export function AlertListItem({
           <p className="truncate text-sm font-semibold text-navy-900">
             {alert.triggerer?.full_name ?? 'Vecino'}
           </p>
+          {alert.triggerer?.address && (
+            <p className="truncate text-xs font-medium text-navy-400">
+              {alert.triggerer.address}
+            </p>
+          )}
           {alert.severity === 'precaucion' && alert.message && (
             <p className="truncate text-xs font-medium text-navy-700">{alert.message}</p>
           )}

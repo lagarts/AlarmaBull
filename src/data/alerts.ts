@@ -28,7 +28,7 @@ export async function listAlerts(communityId: string, limit = 50): Promise<Alert
   const supabase = requireSupabase()
   const { data, error } = await supabase
     .from('alerts')
-    .select('*, triggerer:profiles(full_name)')
+    .select('*, triggerer:profiles(full_name, address)')
     .eq('community_id', communityId)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -40,7 +40,7 @@ export async function getAlert(alertId: string): Promise<AlertRow | null> {
   const supabase = requireSupabase()
   const { data, error } = await supabase
     .from('alerts')
-    .select('*, triggerer:profiles(full_name)')
+    .select('*, triggerer:profiles(full_name, address)')
     .eq('id', alertId)
     .maybeSingle()
   if (error) throw toAppError(error)
