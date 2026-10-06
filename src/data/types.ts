@@ -110,6 +110,7 @@ export interface MyProfile {
   id: string
   full_name: string | null
   phone: string | null
+  address: string | null
   role: 'user' | 'admin_general'
   suspended: boolean
   suspended_reason: string | null

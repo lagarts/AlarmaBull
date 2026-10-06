@@ -363,3 +363,5 @@ caracteres) a todos los vecinos, con la misma cadena que la alerta roja:
 | 13 | Pegar `0009_cron.sql` y verificar `cron.job` | listo (aviso `OK: ... está activo.`) |
 | 14 | Pegar `0010_precaucion.sql` (FASE 13) | listo (5/10/2026) |
 | 15 | Redesplegar `trigger-alert` + push del frontend (FASE 13) | listo (5/10/2026); falta la prueba manual en la app |
+| 16 | Pegar `0011_profile_address.sql` (dirección en el perfil) | listo (5/10/2026) |
+| 17 | Push del frontend con la dirección en el perfil | listo (5/10/2026); falta probarlo en la app |

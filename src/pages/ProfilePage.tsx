@@ -44,6 +44,10 @@ export function ProfilePage() {
                 label="Teléfono"
                 value={profile.phone?.trim() || 'Sin completar'}
               />
+              <ProfileRow
+                label="Dirección"
+                value={profile.address?.trim() || 'Sin completar'}
+              />
               <ProfileRow label="Rol" value={isAdmin ? 'Administrador' : 'Usuario'} />
               <ProfileRow
                 label="Estado de la cuenta"

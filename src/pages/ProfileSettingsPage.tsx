@@ -11,6 +11,8 @@ import { useAction, useAsync } from '../hooks/useAsync'
 const PHONE_PATTERN = /^[0-9+() -]{6,20}$/
 const MIN_NAME_LENGTH = 2
 const MAX_NAME_LENGTH = 120
+const MIN_ADDRESS_LENGTH = 3
+const MAX_ADDRESS_LENGTH = 160
 const MIN_PASSWORD_LENGTH = 8
 
 const inputClass =
@@ -43,13 +45,17 @@ export function ProfileSettingsPage() {
   const { data, loading, error, reload } = useAsync(getMyProfile, [])
   const profile = data ?? contextProfile
 
-  const [profileErrors, setProfileErrors] = useState<{ fullName?: string; phone?: string }>({})
+  const [profileErrors, setProfileErrors] = useState<{
+    fullName?: string
+    phone?: string
+    address?: string
+  }>({})
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [savedProfile, setSavedProfile] = useState(false)
   const [savedPassword, setSavedPassword] = useState(false)
 
-  const save = useAction(async (fullName: string, phone: string) => {
-    await updateMyProfile(fullName, phone)
+  const save = useAction(async (fullName: string, phone: string, address: string) => {
+    await updateMyProfile(fullName, phone, address)
     return true
   })
 
@@ -67,7 +73,8 @@ export function ProfileSettingsPage() {
     const values = new FormData(event.currentTarget)
     const fullName = String(values.get('fullName') ?? '').trim()
     const phone = String(values.get('phone') ?? '').trim()
-    const next: { fullName?: string; phone?: string } = {}
+    const address = String(values.get('address') ?? '').trim()
+    const next: { fullName?: string; phone?: string; address?: string } = {}
 
     if (fullName.length < MIN_NAME_LENGTH || fullName.length > MAX_NAME_LENGTH) {
       next.fullName = `El nombre debe tener entre ${MIN_NAME_LENGTH} y ${MAX_NAME_LENGTH} caracteres.`
@@ -76,12 +83,17 @@ export function ProfileSettingsPage() {
       next.phone =
         'Ingresá un teléfono válido: de 6 a 20 caracteres, con números, espacios, +, ( o ).'
     }
+    if (address && address.length < MIN_ADDRESS_LENGTH) {
+      next.address = `La dirección debe tener al menos ${MIN_ADDRESS_LENGTH} caracteres.`
+    } else if (address.length > MAX_ADDRESS_LENGTH) {
+      next.address = `La dirección no puede superar los ${MAX_ADDRESS_LENGTH} caracteres.`
+    }
 
     setProfileErrors(next)
     setSavedProfile(false)
     if (Object.keys(next).length > 0) return
 
-    const ok = await save.run(fullName, phone)
+    const ok = await save.run(fullName, phone, address)
     if (ok) {
       setSavedProfile(true)
       void refreshProfile()
@@ -170,6 +182,28 @@ export function ProfileSettingsPage() {
                 <p className={hintClass}>Opcional. Sólo números, espacios, +, ( y ).</p>
               </div>
 
+              <div>
+                <label className={labelClass} htmlFor="profile-address">
+                  Dirección
+                </label>
+                <input
+                  id="profile-address"
+                  name="address"
+                  type="text"
+                  autoComplete="street-address"
+                  defaultValue={profile.address ?? ''}
+                  className={inputClass}
+                  aria-invalid={Boolean(profileErrors.address)}
+                />
+                {profileErrors.address ? (
+                  <p className={fieldErrorClass}>{profileErrors.address}</p>
+                ) : (
+                  <p className={hintClass}>
+                    Opcional. De {MIN_ADDRESS_LENGTH} a {MAX_ADDRESS_LENGTH} caracteres.
+                  </p>
+                )}
+              </div>
+
               {save.error && <Notice tone="danger">{save.error}</Notice>}
 
               <Button type="submit" className="w-full" loading={save.pending}>
@@ -223,7 +257,7 @@ export function ProfileSettingsPage() {
     <div>
       <PageHeader
         title="Editar perfil"
-        subtitle="Actualizá tu nombre, tu teléfono y tu contraseña."
+        subtitle="Actualizá tu nombre, tu teléfono, tu dirección y tu contraseña."
         actions={
           <Button variant="outline" onClick={() => navigate('/perfil')}>
             Volver
