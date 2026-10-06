@@ -93,6 +93,41 @@ function clipText(text: string, max = 200): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+interface RecipientRow {
+  id: string;
+  recipient_user_id: string;
+  delivery_status?: string | null;
+}
+
+/**
+ * Marca en alert_recipients cómo terminó la entrega para ese vecino, para
+ * que el detalle de la alerta no muestre "Pendiente" cuando el push salió
+ * bien. Nunca degraba una fila que ya quedó como "sent".
+ */
+async function recordDelivery(
+  db: SupabaseClient,
+  recipient: RecipientRow | undefined,
+  delivered: number,
+  subscriptions: number,
+): Promise<void> {
+  if (!recipient) return;
+  if (recipient.delivery_status === "sent") return;
+
+  let status: DeliveryStatus = "skipped";
+  if (subscriptions > 0) status = "failed";
+  if (delivered > 0) status = "sent";
+
+  const { error } = await db
+    .from("alert_recipients")
+    .update({
+      delivery_status: status,
+      delivered_at: status === "sent" ? new Date().toISOString() : null,
+    })
+    .eq("id", recipient.id);
+
+  if (error) throw error;
+}
+
 /**
  * Registra el resultado por destinatario en notification_jobs (idempotencia).
  * Reutiliza la fila placeholder que crea trigger_alert (push_subscription_id
@@ -269,7 +304,7 @@ Deno.serve(async (req) => {
     // 5) Destinatarios de la alerta y sus suscripciones activas.
     const { data: recipients, error: recipientsError } = await db
       .from("alert_recipients")
-      .select("recipient_user_id")
+      .select("id, recipient_user_id, delivery_status")
       .eq("alert_id", alertId);
     if (recipientsError) {
       logError("consultando destinatarios", recipientsError);
@@ -320,9 +355,13 @@ Deno.serve(async (req) => {
     let failed = 0;
 
     for (const recipientId of recipientIds) {
+      const recipientRow = (recipients ?? []).find(
+        (row: RecipientRow) => row.recipient_user_id === recipientId,
+      );
       const deviceSubs = (subscriptions ?? []).filter(
         (subscription: SubscriptionRow) => subscription.user_id === recipientId,
       );
+      let delivered = 0;
 
       for (const subscription of deviceSubs) {
         const data = subscription.subscription_data;
@@ -338,7 +377,9 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Ya enviado en una vuelta anterior: cuenta como entregado.
         if (await pairAlreadySent(db, alertId, recipientId, subscriptionId)) {
+          delivered += 1;
           continue;
         }
 
@@ -349,6 +390,7 @@ Deno.serve(async (req) => {
             { vapidDetails: { subject, publicKey: vapidPublicKey, privateKey: vapidPrivateKey }, TTL: 43200 },
           );
           sent += 1;
+          delivered += 1;
           await recordJob(db, alertId, recipientId, subscriptionId, "sent", null)
             .catch((error: unknown) => logError("registrando el job", error));
         } catch (error) {
@@ -358,6 +400,10 @@ Deno.serve(async (req) => {
             .catch((writeError: unknown) => logError("registrando el job", writeError));
         }
       }
+
+      // alert_recipients: sent / failed / skipped (no rompe el push si falla).
+      await recordDelivery(db, recipientRow, delivered, deviceSubs.length)
+        .catch((error: unknown) => logError("registrando la entrega", error));
     }
 
     return json({ sent, failed });
