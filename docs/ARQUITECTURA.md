@@ -310,3 +310,35 @@ contacto dejó de estar aceptado.
 
 Orden de despliegue: pegar `0013_contact_alerts.sql` **antes** de publicar el frontend
 (nuevo), porque `listCheckinContacts` pide la columna `account_id`.
+
+## 13.8. Débito automático en la app (FASE 16)
+
+La suscripción se cobra sola todos los meses (API de *Preapproval* de Mercado Pago sin
+plan asociado; el detalle del producto está en `docs/FASE9_mercadopago.md`):
+
+1. **Alta** — `/suscripcion` → *Suscribirme* → `mercadopago-create` crea el preapproval
+   (`auto_recurring: frequency 1, months, ARS`, precio de `subscription_plans.price_ars`,
+   `external_reference = user_id`, `notification_url` = la webhook) y devuelve el
+   `init_point`. El usuario autoriza su tarjeta en el checkout alojado de MP; **sólo un
+   pago verificado server-side** (webhook, tópico `payment`) pasa la fila a `active` con
+   `current_period_end = next_payment_date`.
+2. **Renovación** — MP debita solo cada mes y la webhook (`mercadopago-webhook`, firma
+   `x-signature` + idempotencia en `payment_events`) actualiza el período. De red de
+   seguridad está el cron horario `subscriptions-refresh`
+   (`0014_subscription_cron.sql`) que llama a `refresh_subscription_states()`:
+   `trial` vencido → `expired`, `active` con período vencido → `canceled` si
+   `cancel_at_period_end` o `past_due` si no. Esa función se corrigió en
+   `0015_subscription_refresh_fix.sql` (el `CASE` no casteaba al enum y fallaba siempre).
+3. **Cancelación desde la app** — botón *Cancelar suscripción* (con `ConfirmDialog`) en
+   `/suscripcion` → `mercadopago-create` con `{"action":"cancel"}` →
+   `PUT /preapproval/{id}` con `status`. Si el período pagado sigue vigente se marca
+   `cancel_at_period_end` y la suscripción corre hasta el fin; si no, pasa a `canceled`.
+   La webhook de MP confirma el mismo estado cuando notifica (`applyCancellation`).
+4. **Vuelta del checkout** — el `back_url` de MP redirige a
+   `/suscripcion?resultado=exito|fallo|pendiente`; la página muestra el aviso, limpia la
+   query y recarga el estado (con `exito`, un recargo automático a los 5 s).
+
+Seguridad: el alta y la cancelación corren con el JWT del usuario (401 sin sesión,
+403 si la cuenta está suspendida); el monto sale siempre de `subscription_plans` y la
+webhook verifica monto/moneda contra la BD antes de activar; ningún secreto de MP llega
+al navegador.

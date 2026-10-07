@@ -47,16 +47,41 @@ export interface CheckoutSession {
   environment: string
 }
 
+export interface CancelSubscriptionResult {
+  canceled: boolean
+  cancel_at_period_end: boolean
+}
+
 /** Crea la suscripción en Mercado Pago vía Edge Function. */
 export async function startCheckout(): Promise<CheckoutSession> {
+  return invokeMercadoPagoFunction<CheckoutSession>(
+    'No pudimos iniciar el pago. Intentá de nuevo en unos segundos.',
+  )
+}
+
+/** Cancela el débito automático de la suscripción (FASE 16). */
+export async function cancelMySubscription(): Promise<CancelSubscriptionResult> {
+  return invokeMercadoPagoFunction<CancelSubscriptionResult>(
+    'No pudimos cancelar la suscripción. Intentá de nuevo en unos segundos.',
+    { action: 'cancel' },
+  )
+}
+
+async function invokeMercadoPagoFunction<T>(
+  fallback: string,
+  body?: Record<string, unknown>,
+): Promise<T> {
   const supabase = requireSupabase()
-  const { data, error } = await supabase.functions.invoke('mercadopago-create')
+  const { data, error } = await supabase.functions.invoke(
+    'mercadopago-create',
+    body ? { body } : undefined,
+  )
   if (error) {
-    const message =
-      (error as { context?: Response }).context && (await readErrorMessage((error as { context: Response }).context))
-    throw new Error(message || 'No pudimos iniciar el pago. Intentá de nuevo en unos segundos.')
+    const context = (error as { context?: Response }).context
+    const message = context ? await readErrorMessage(context) : null
+    throw new Error(message || fallback)
   }
-  return data as CheckoutSession
+  return data as T
 }
 
 async function readErrorMessage(response: Response): Promise<string | null> {

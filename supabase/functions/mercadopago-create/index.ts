@@ -1,6 +1,7 @@
 // supabase/functions/mercadopago-create/index.ts
 //
-// FASE 9 · Crea la suscripción mensual del usuario en Mercado Pago.
+// FASE 9/16 · Crea la suscripción mensual del usuario en Mercado Pago o,
+// con {"action":"cancel"}, baja el débito automático (FASE 16).
 //
 // Producto elegido: Suscripciones (API de Preapproval) SIN plan asociado, con
 // "pago pendiente": el medio de pago lo carga el comprador en el checkout
@@ -15,6 +16,9 @@
 //   https://www.mercadopago.com.ar/developers/es/docs/subscriptions/integration-configuration/subscription-no-associated-plan/pending-payments
 // - Obtener suscripción (GET /preapproval/{id}):
 //   https://www.mercadopago.com.ar/developers/es/reference/online-payments/subscriptions/get-preapproval/get
+// - Cancelar suscripción (PUT /preapproval/{id} con status):
+//   https://www.mercadopago.com.ar/developers/es/reference/online-payments/subscriptions/update-preapproval/put
+//   https://www.mercadopago.com.ar/developers/es/docs/subscriptions/subscription-management
 // - Credenciales (Access Token de prueba vs. de producción):
 //   https://www.mercadopago.com.ar/developers/es/docs/subscriptions/additional-content/your-integrations/credentials
 // - Webhooks de Suscripciones y firma x-signature:
@@ -106,6 +110,101 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (profile?.suspended) {
       return json({ error: "Tu cuenta está suspendida. Comunicate con el administrador." }, 403);
+    }
+
+    // 3b) Cuerpo opcional: {"action":"cancel"} baja el débito automático
+    //     (FASE 16). Sin action (o vacío) sigue siendo el alta de siempre.
+    const rawBody = await req.text();
+    let action = "";
+    if (rawBody.trim()) {
+      try {
+        const parsed: unknown = JSON.parse(rawBody);
+        if (typeof parsed === "object" && parsed !== null) {
+          const value = (parsed as Record<string, unknown>).action;
+          if (typeof value === "string") action = value.trim().toLowerCase();
+        }
+      } catch {
+        return json({ error: "Cuerpo de la petición inválido" }, 400);
+      }
+      if (action !== "cancel") {
+        return json({ error: "Acción no reconocida" }, 400);
+      }
+    }
+
+    // 3c) Cancelación (FASE 16): PUT /preapproval/{id} con el estado "canceled".
+    //     Sólo para suscripciones activas con vínculo en MP. Si el período pagado
+    //     sigue vigente se respeta hasta el final (cancel_at_period_end); la
+    //     webhook de MP confirma el mismo estado cuando notifica el cambio.
+    if (action === "cancel") {
+      const { data: subRow, error: subError } = await db
+        .from("user_subscriptions")
+        .select("id, status, current_period_end, provider, provider_subscription_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (subError) {
+        console.error(`[mercadopago-create] error consultando la suscripción: ${subError.message}`);
+        return json({ error: "No se pudo consultar la suscripción" }, 500);
+      }
+      const sub = subRow as {
+        id: string;
+        status: string;
+        current_period_end: string | null;
+        provider: string;
+        provider_subscription_id: string | null;
+      } | null;
+      if (
+        !sub ||
+        sub.provider !== "mercadopago" ||
+        !sub.provider_subscription_id ||
+        sub.status !== "active"
+      ) {
+        return json({ error: "No hay ninguna suscripción activa para cancelar." }, 400);
+      }
+
+      const cancelUrl = `${MP_CREATE_URL}/${sub.provider_subscription_id}`;
+      const putCancel = (statusValue: string) =>
+        fetch(cancelUrl, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${mpToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: statusValue }),
+        });
+      // La documentación de MP es inconsistente con la forma del valor
+      // ("canceled" en el PUT, "cancelled" en las respuestas): si una forma
+      // da 400 se reintenta con la otra.
+      let cancelResponse = await putCancel("canceled");
+      if (cancelResponse.status === 400) cancelResponse = await putCancel("cancelled");
+      if (!cancelResponse.ok) {
+        console.warn(`[mercadopago-create] cancelación rechazada por MP: ${cancelResponse.status}`);
+        return json(
+          { error: "No se pudo cancelar en Mercado Pago. Intentá de nuevo en unos minutos." },
+          502,
+        );
+      }
+
+      const periodEnd = sub.current_period_end ? new Date(sub.current_period_end).getTime() : 0;
+      const cancelPatch: Record<string, unknown> =
+        periodEnd > Date.now()
+          ? { cancel_at_period_end: true }
+          : { status: "canceled", cancel_at_period_end: false };
+      cancelPatch.updated_at = new Date().toISOString();
+      const { error: cancelSaveError } = await db
+        .from("user_subscriptions")
+        .update(cancelPatch)
+        .eq("id", sub.id);
+      if (cancelSaveError) {
+        console.error(
+          `[mercadopago-create] error guardando la cancelación: ${cancelSaveError.message}`,
+        );
+        return json({ error: "No se pudo registrar la cancelación" }, 500);
+      }
+
+      return json({
+        canceled: true,
+        cancel_at_period_end: cancelPatch.cancel_at_period_end === true,
+      });
     }
 
     // 4) Plan activo y su precio real. Nunca se inventa ni se usa un monto por defecto.
@@ -207,6 +306,6 @@ Deno.serve(async (req) => {
     });
   } catch {
     console.error("[mercadopago-create] error inesperado");
-    return json({ error: "Error interno al crear la suscripción" }, 500);
+    return json({ error: "Error interno al procesar la suscripción" }, 500);
   }
 });

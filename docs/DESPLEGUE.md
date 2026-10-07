@@ -353,19 +353,19 @@ fila `estoy_bien_reminders` con `channel = 'push'` que manda la cola del cron
 (`estoy-bien-deliver`). El que acepta **sin cuenta** no existe como usuario, así que sigue
 en el camino de SMS/email pendiente; **rechazar** el link sigue pudiendo hacerse sin cuenta.
 
-**Orden importa** (el frontend nuevo lee la columna `account_id`):
+**Orden importa** (el frontend nuevo lee la columna `account_id`). Hecho el 7/10/2026:
 
-1. [ ] **Migración 0013** → SQL Editor de Supabase → pegar
+1. [x] **Migración 0013** → SQL Editor de Supabase → pegar
    `supabase/migrations/0013_contact_alerts.sql` completo y ejecutar. Agrega
    `estoy_bien_contacts.account_id`, hace que `estoy_bien_contact_respond` exija sesión al
    aceptar y cambia `estoy_bien_tick` / `estoy_bien_confirm` para avisar a los contactos
    con cuenta.
-2. [ ] **Edge Function** → redesplegada `estoy-bien-deliver` (manda el push a la cuenta del
+2. [x] **Edge Function** → redesplegada `estoy-bien-deliver` (manda el push a la cuenta del
    contacto y juzga la confirmación por la persona vigilada, no por el destinatario):
    ```bash
    supabase functions deploy estoy-bien-deliver
    ```
-3. [ ] **Frontend** → commit + push (Vercel redespliega solo). El link de invitación lleva
+3. [x] **Frontend** → commit + push (Vercel redespliega solo). El link de invitación lleva
    a `/acceder?redirect=...` si no hay sesión y vuelve a la invitación al entrar.
 4. [ ] **Verificación** → en la app: *Contactos personales* → copiar el link → abrirlo con
    otra cuenta → **Acepto ser contacto** → aparece el badge **Avisa en la app**; en BD:
@@ -374,6 +374,62 @@ en el camino de SMS/email pendiente; **rechazar** el link sigue pudiendo hacerse
    ```
    y al vencer un ciclo, el contacto debe recibir la campanita *"Estoy bien: sin
    confirmación"* y el push en el teléfono (si tiene dispositivo registrado).
+
+---
+
+## 13. Débito automático con Mercado Pago (FASE 16)
+
+La suscripción se cobra sola: `mercadopago-create` da de alta el *preapproval* mensual
+(`auto_recurring: 1 mes`), el usuario autoriza su tarjeta en el checkout alojado de MP y
+`mercadopago-webhook` activa, renueva y cancela con el estado real que consulta a la API.
+La FASE 16 cierra el circuito en la app:
+
+- **Cancelar desde la app** → botón *Cancelar suscripción* en `/suscripcion` (con
+  confirmación) → `mercadopago-create` con `{"action":"cancel"}` → `PUT /preapproval/{id}`;
+  si el período pagado sigue vigente queda `cancel_at_period_end` y la suscripción corre
+  hasta el fin del período.
+- **Al volver del checkout** → `/suscripcion?resultado=exito|fallo|pendiente` muestra el
+  aviso, limpia la URL y recarga el estado (con `exito` hay un segundo recargo automático
+  a los 5 s).
+- **Cron horario** → `0014_subscription_cron.sql` agenda `refresh_subscription_states()`
+  cada hora (vencimientos y cancelaciones que ninguna webhook cerró).
+- **Fix** → `0015_subscription_refresh_fix.sql` corrige `refresh_subscription_states()`:
+  el `CASE` del segundo UPDATE no casteaba al enum `subscription_status` y la función
+  **siempre fallaba** (nadie lo había visto porque no había ningún cron que la llamara).
+
+Orden (credenciales primero: sin los secretos `mercadopago-create` responde 500):
+
+1. [ ] **Credenciales de Mercado Pago** → <https://www.mercadopago.com.ar/developers> →
+   *Tu integración > Credenciales* → Access Token (`APP_USR-...`); y
+   *Tu integración > Webhooks > Configurar notificación* → clave secreta (firma
+   `x-signature`, obligatoria: sin ella la webhook responde 401).
+2. [ ] **Secretos** → desde la raíz del repo:
+   ```bash
+   supabase secrets set MP_ACCESS_TOKEN="APP_USR-..." MP_WEBHOOK_SECRET="..." APP_URL="https://alarma-bull.vercel.app"
+   ```
+3. [ ] **Migraciones** → SQL Editor, en este orden (la 0014 agenda la función que arregla
+   la 0015):
+   - `supabase/migrations/0015_subscription_refresh_fix.sql`
+   - `supabase/migrations/0014_subscription_cron.sql` → debe salir
+     `OK: el cron de suscripciones está activo.`
+4. [ ] **Edge Function** → redesplegar `mercadopago-create` (agregó `action=cancel`):
+   ```bash
+   supabase functions deploy mercadopago-create
+   ```
+5. [ ] **Frontend** → commit + push (Vercel redespliega solo).
+6. [ ] **Prueba end-to-end** (con el precio cargado, paso 7) → *Suscribirme* → `init_point`
+   → pagar (tarjeta de prueba de MP si es sandbox) → al volver debe verse el aviso
+   *"Mercado Pago recibió tu pago"* y el estado `active` con `Próximo cobro`; verificar
+   en BD:
+   ```sql
+   select status, current_period_start, current_period_end, cancel_at_period_end
+     from public.user_subscriptions;
+   select event_type, status, amount_ars, processed_at
+     from public.payment_events order by created_at desc limit 10;
+   ```
+   Después *Cancelar suscripción* → debe quedar `cancel_at_period_end = true` con período
+   vigente, y al vencer el período el cron lo pasa a `canceled`. El detalle del webhook en
+   sandbox está en `docs/FASE9_mercadopago.md` (sección 6).
 
 ---
 
@@ -388,7 +444,7 @@ en el camino de SMS/email pendiente; **rechazar** el link sigue pudiendo hacerse
 | 4 | Promover al primer `admin_general` | por confirmar |
 | 5 | Desplegar 4 Edge Functions + secretos | listo (VAPID cargados; falta `MP_ACCESS_TOKEN`) |
 | 6 | Claves VAPID (Supabase + Vercel) | listo |
-| 7 | Cargar el precio del plan | por confirmar |
+| 7 | Cargar el precio del plan | listo (Plan mensual, 3000 ARS) |
 | 8 | Importar repo en Vercel + variables + deploy | listo |
 | 9 | Verificación final (app + `scripts\test-db.ps1`) | por confirmar |
 | 10 | Pegar `0008_estoy_bien.sql` en Supabase | listo |
@@ -400,6 +456,11 @@ en el camino de SMS/email pendiente; **rechazar** el link sigue pudiendo hacerse
 | 16 | Pegar `0011_profile_address.sql` (dirección en el perfil) | listo (5/10/2026) |
 | 17 | Push del frontend con la dirección en el perfil | listo (5/10/2026); falta probarlo en la app |
 | 18 | Pegar `0012_invite_link.sql` (link de invitación siempre copiable + vencimiento/usos en null) | listo (5/10/2026) |
-| 19 | Pegar `0013_contact_alerts.sql` (FASE 15: avisos a contactos por la app) | **pendiente — antes de publicar el frontend nuevo** (si no, `listCheckinContacts` falla al pedir la columna `account_id`) |
-| 20 | Redesplegar `estoy-bien-deliver` (FASE 15) | pendiente |
-| 21 | Push del frontend con la FASE 15 | pendiente; falta la prueba manual en la app |
+| 19 | Pegar `0013_contact_alerts.sql` (FASE 15: avisos a contactos por la app) | listo (7/10/2026; verificado: columna `account_id` presente) |
+| 20 | Redesplegar `estoy-bien-deliver` (FASE 15) | listo (7/10/2026) |
+| 21 | Push del frontend con la FASE 15 | listo (7/10/2026); falta la prueba manual del link con otra cuenta |
+| 22 | Credenciales MP: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL` | **pendiente — bloqueante** (sin ellos `mercadopago-create` responde 500). Ver sección 13 |
+| 23 | Pegar `0015_subscription_refresh_fix.sql` y después `0014_subscription_cron.sql` (FASE 16) | pendiente; verificar el aviso `OK: el cron de suscripciones está activo.` |
+| 24 | Redesplegar `mercadopago-create` (FASE 16: cancelar desde la app) | pendiente |
+| 25 | Push del frontend con la FASE 16 (`?resultado=`, cancelar, débito automático) | pendiente |
+| 26 | Prueba end-to-end de cobro: checkout + webhook + cancelación (sección 13.6) | pendiente |

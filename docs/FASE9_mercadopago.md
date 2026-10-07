@@ -138,8 +138,20 @@ Nota sobre entornos: la documentación 2026 muestra tokens de prueba también co
 
 ## 7. Tareas manuales pendientes
 
-1. Obtener credenciales de Mercado Pago y setear `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL` (`supabase secrets set ...`).
-2. Desplegar ambas funciones (`mercadopago-webhook` con `--no-verify-jwt`).
-3. Cargar el precio real del plan con `admin_set_plan_price` (el seed queda en `0` a propósito: no se inventan precios).
-4. Definir los textos legales (condiciones/precio) y completar la ruta `suscripcion` en el frontend, que hoy debe leer `?resultado=exito|fallo|pendiente` del `back_url` y mostrar el estado de la suscripción (`get_my_subscription`).
-5. Probar el flujo completo en sandbox (sección 6) y, al publicar, repetir con credenciales de producción.
+1. **Pendiente (bloqueante)**: obtener credenciales de Mercado Pago y setear
+   `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL` (`supabase secrets set ...`).
+   Checklist: sección 13 de `docs/DESPLEGUE.md`.
+2. **Hecho**: las cuatro funciones están desplegadas (`mercadopago-webhook` con
+   `--no-verify-jwt`). La FASE 16 agregó `{"action":"cancel"}` a `mercadopago-create`:
+   hay que redesplegarla cuando se publique esa fase.
+3. **Hecho**: el precio está cargado (Plan mensual, 3000 ARS; `admin_set_plan_price`).
+4. **Hecho en la FASE 16**: `/suscripcion` lee `?resultado=exito|fallo|pendiente` del
+   `back_url` (aviso + limpiezo de la query + recarga) y ofrece *Cancelar suscripción*
+   (`PUT /preapproval/{id}`). **Pendiente**: los textos legales (condiciones/precio).
+5. **Pendiente**: probar el flujo completo en sandbox (sección 6) y, al publicar,
+   repetir con credenciales de producción.
+
+Nota (FASE 16): la red de seguridad de vencimientos es el cron horario
+`refresh_subscription_states()` (`0014_subscription_cron.sql`); la función se corrigió en
+`0015_subscription_refresh_fix.sql` porque el `CASE` del segundo UPDATE no casteaba al
+enum `subscription_status` y fallaba siempre.
