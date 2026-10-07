@@ -81,13 +81,15 @@ try {
     'supabase\migrations\0012_invite_link.sql',
     'supabase\migrations\0013_contact_alerts.sql',
     'supabase\migrations\0015_subscription_refresh_fix.sql',
+    'supabase\migrations\0016_security_grants.sql',
     'tests\db\10_tests.sql',
     'tests\db\11_estoy_bien_tests.sql',
     'tests\db\12_precaucion_tests.sql',
     'tests\db\13_profile_address_tests.sql',
     'tests\db\14_invite_link_tests.sql',
     'tests\db\15_contact_alerts.sql',
-    'tests\db\16_subscription_states.sql'
+    'tests\db\16_subscription_states.sql',
+    'tests\db\17_security_grants.sql'
   )
 
   foreach ($file in $files) {

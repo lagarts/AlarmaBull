@@ -592,6 +592,11 @@ begin
     raise exception 'FALLO: no se otorgó la suscripción gratis';
   end if;
 
+  -- is_entitled() quedó reservada al servidor en 0016 (era un IDOR: con
+  -- cualquier UUID se consultaba si otro usuario estaba al día), así que la
+  -- verificación de acceso se hace fuera del rol de cliente.
+  reset role;
+
   if not public.is_entitled(v_user) then
     raise exception 'FALLO: la suscripción gratis no da acceso';
   end if;

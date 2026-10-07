@@ -103,11 +103,15 @@ Deno.serve(async (req) => {
     // 3) Cuentas suspendidas no pueden contratar. Se consulta con el propio
     //    JWT (RLS "profiles_select_self_or_admin"): el service role queda
     //    reservado para user_subscriptions y subscription_plans.
-    const { data: profile } = await authClient
+    const { data: profile, error: profileError } = await authClient
       .from("profiles")
       .select("suspended")
       .eq("id", user.id)
       .maybeSingle();
+    if (profileError) {
+      // Fail-closed: si no se pudo verificar la cuenta, no se contrata.
+      return json({ error: "No se pudo verificar tu cuenta. Intentá nuevamente." }, 500);
+    }
     if (profile?.suspended) {
       return json({ error: "Tu cuenta está suspendida. Comunicate con el administrador." }, 403);
     }
@@ -230,6 +234,27 @@ Deno.serve(async (req) => {
     }
     if (!user.email) {
       return json({ error: "Tu cuenta de usuario no tiene un email asociado" }, 400);
+    }
+
+    // 4b) Idempotencia: si ya hay un vínculo vigente en Mercado Pago no se crea
+    //     otro (evita preapprovals huérfanos, agotar la cuota de MP y mil
+    //     webhooks de vuelta cuando el usuario aprieta "Renovar" varias veces).
+    const { data: existingSub, error: existingError } = await db
+      .from("user_subscriptions")
+      .select("status, provider, provider_subscription_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (existingError) {
+      console.error(`[mercadopago-create] error consultando suscripción: ${existingError.message}`);
+      return json({ error: "No se pudo consultar tu suscripción" }, 500);
+    }
+    if (
+      existingSub &&
+      existingSub.provider === "mercadopago" &&
+      existingSub.provider_subscription_id &&
+      existingSub.status === "active"
+    ) {
+      return json({ error: "Ya tenés una suscripción activa en Mercado Pago." }, 409);
     }
 
     // 5) Alta de la suscripción en Mercado Pago (POST /preapproval).

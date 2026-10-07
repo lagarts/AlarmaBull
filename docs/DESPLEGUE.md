@@ -445,6 +445,45 @@ Orden (credenciales primero: sin los secretos `mercadopago-create` responde 500)
    Después *Cancelar suscripción* → debe quedar `cancel_at_period_end = true` con período
    vigente, y al vencer el período el cron lo pasa a `canceled`. El detalle del webhook en
    sandbox está en `docs/FASE9_mercadopago.md` (sección 6).
+   > **Progreso 7/10/2026**: el alta ya funciona (la fila quedó
+   > `trial/mercadopago` con `provider_subscription_id`), pero `payment_events` sigue en
+   > **0**: falta que el cobro se confirme vía webhook y que el estado pase a `active`.
+
+---
+
+## 14. Ciberseguridad — Fase 1 (auditoría 7/10/2026)
+
+Auditoría integral (BD + Edge Functions + frontend + git/dependencias). Resultado: sin
+secretos en el repo ni en el historial, `npm audit` 0 vulnerabilidades, RLS total
+(21/21 tablas), webhook de MP fail-closed. Fase 1: cierra los grants expuestos, endurece
+el alta de MP y agrega cabeceras de seguridad.
+
+1. [ ] **Migración `0016_security_grants.sql`** → SQL Editor → pegar; debe terminar con
+   `OK: grants de seguridad verificados` y `OK: 0016_security_grants aplicada`. Cierra:
+   - `cron.schedule` / `net.http_*` para `anon`/`authenticated` (el hallazgo más grave:
+     con execute ahí se podía agendar SQL arbitrario que corre como `postgres`).
+   - `refresh_subscription_states` (grant masivo de 0003), `is_entitled(uuid)` (IDOR),
+     `trigger_alert` y `update_own_profile` (los habían reabierto los DROP+CREATE de
+     0010/0011 a `anon`), `handle_new_user`/`profiles_guard` (PUBLIC revocado).
+   - `register_push_subscription`: tope de 8 dispositivos + bloqueo de secuestro de
+     endpoints (DoS del canal de alarma).
+   - `join_community`: los miembros `removed` no reingresan con el link.
+2. [ ] **Frontend** → commit + push (`vercel.json`: CSP con `frame-ancestors 'none'`,
+   HSTS y Permissions-Policy; la sesión vive en `localStorage` y la CSP es su barrera).
+3. [ ] **Edge Function** → redesplegar `mercadopago-create` (cuenta suspendida
+   *fail-closed* + **409** si ya hay suscripción activa vinculada a MP).
+4. [ ] **Verificación** → `curl -I https://alarma-bull.vercel.app/` debe mostrar
+   `content-security-policy` y `strict-transport-security`; en BD:
+   ```sql
+   select has_function_privilege('anon', 'cron.schedule(text,text,text)', 'execute'),
+          has_function_privilege('anon', 'public.is_entitled(uuid)', 'execute');
+   -- ambos deben dar false
+   ```
+
+Pendientes de la Fase 2 (ver auditoría): rate limiting en las 4 EFs, ventana de
+frescura del `ts` en la webhook, `source_url` con esquema validado, `supabase/config.toml`
+con `verify_jwt`, PII entre vecinos (teléfono/dirección/motivo de suspensión), sesión en
+cookies `httpOnly` y rotación de `sbp_`/`service_role`/anon/VAPID.
 
 ---
 
@@ -478,4 +517,7 @@ Orden (credenciales primero: sin los secretos `mercadopago-create` responde 500)
 | 23 | Pegar `0015_subscription_refresh_fix.sql` y después `0014_subscription_cron.sql` (FASE 16) | listo (7/10/2026; job `subscriptions-refresh` verificado en `cron.job`) |
 | 24 | Redesplegar `mercadopago-create` (FASE 16: cancelar desde la app) | listo (7/10/2026) |
 | 25 | Push del frontend con la FASE 16 (`?resultado=`, cancelar, débito automático) | listo (7/10/2026; bundle `index-jiYy-eKO.js` verificado) |
-| 26 | Prueba end-to-end de cobro: checkout + webhook + cancelación (sección 13.6) | pendiente |
+| 26 | Prueba end-to-end de cobro: checkout + webhook + cancelación (sección 13.6) | progreso (7/10/2026: el alta crea el vínculo `trial/mercadopago`, falta confirmar el cobro: `payment_events` en 0) |
+| 27 | Pegar `0016_security_grants.sql` (ciberseguridad fase 1) | pendiente (sección 14) |
+| 28 | Push del frontend con CSP + HSTS (sección 14) | pendiente |
+| 29 | Redesplegar `mercadopago-create` (409 + cuenta suspendida fail-closed) | pendiente |
