@@ -19,6 +19,7 @@ import { EmptyState, ErrorState, Notice, Spinner } from '../components/ui/Feedba
 export function SubscriptionPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [resultado] = useState<string | null>(() => searchParams.get('resultado'))
+  const checkoutReturn = resultado !== null
   const subscriptionQuery = useSubscription()
   const plansQuery = useAsync<PlanInfo[]>(() => listActivePlans(), [])
   const paymentsQuery = useAsync<AdminPaymentRow[]>(() => listMyPayments(), [])
@@ -32,14 +33,14 @@ export function SubscriptionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Con "exito" la webhook activa la suscripción en pocos segundos: se recarga
-  // una vez automáticamente y, si hace falta, queda el botón manual.
+  // MP redirige a una única back_url sin distinguir el desenlace: al volver del
+  // checkout se verifica el estado real y se recarga una vez a los 5 segundos.
   useEffect(() => {
-    if (resultado !== 'exito') return
+    if (!checkoutReturn) return
     const timer = window.setTimeout(() => subscriptionQuery.reload(), 5000)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resultado])
+  }, [checkoutReturn])
 
   const reloadAll = () => {
     subscriptionQuery.reload()
@@ -88,29 +89,23 @@ export function SubscriptionPage() {
         subtitle="Tu estado de pago, tu plan y el historial de cobros."
       />
 
-      {resultado === 'exito' && (
+      {checkoutReturn && status === 'active' && (
         <Notice tone="success">
+          <p>Mercado Pago recibió tu pago. Tu suscripción quedó activa.</p>
+        </Notice>
+      )}
+
+      {checkoutReturn && status !== 'active' && (
+        <Notice tone="warning">
           <p>
-            Mercado Pago recibió tu pago. La suscripción se activa apenas confirmemos el cobro; si
-            sigue igual, tocá “Actualizar estado”.
+            Todavía no confirmamos tu pago. Si recién lo pagaste, esperá unos segundos y tocá
+            “Actualizar estado”.
           </p>
           <div className="mt-3">
             <Button size="sm" onClick={reloadAll}>
               Actualizar estado
             </Button>
           </div>
-        </Notice>
-      )}
-
-      {resultado === 'pendiente' && (
-        <Notice tone="warning">
-          Tu pago está pendiente de acreditación. Te lo confirmamos apenas Mercado Pago lo acredite.
-        </Notice>
-      )}
-
-      {resultado === 'fallo' && (
-        <Notice tone="danger">
-          El pago no se completó. Podés intentarlo de nuevo cuando quieras.
         </Notice>
       )}
 

@@ -388,9 +388,11 @@ La FASE 16 cierra el circuito en la app:
   confirmación) → `mercadopago-create` con `{"action":"cancel"}` → `PUT /preapproval/{id}`;
   si el período pagado sigue vigente queda `cancel_at_period_end` y la suscripción corre
   hasta el fin del período.
-- **Al volver del checkout** → `/suscripcion?resultado=exito|fallo|pendiente` muestra el
-  aviso, limpia la URL y recarga el estado (con `exito` hay un segundo recargo automático
-  a los 5 s).
+- **Al volver del checkout** → `/preapproval` sólo admite una `back_url` en *string*:
+  MP redirige a `/suscripcion?resultado=checkout` sin distinguir el desenlace y la
+  página muestra el aviso según el **estado real** (con `active` dice "recibió tu pago";
+  sin él, "todavía no confirmamos" + botón *Actualizar estado*), limpia la URL y
+  recarga a los 5 s.
 - **Cron horario** → `0014_subscription_cron.sql` agenda `refresh_subscription_states()`
   cada hora (vencimientos y cancelaciones que ninguna webhook cerró).
 - **Fix** → `0015_subscription_refresh_fix.sql` corrige `refresh_subscription_states()`:
@@ -423,7 +425,14 @@ Orden (credenciales primero: sin los secretos `mercadopago-create` responde 500)
    ```
 5. [x] **Frontend** → commit + push el 7/10/2026 (bundle `index-jiYy-eKO.js` verificado en
    producción con los strings nuevos).
-6. [ ] **Prueba end-to-end** (con el precio cargado, paso 7) → *Suscribirme* → `init_point`
+6. [x] **Fix del 502 en el alta** (7/10/2026) → el primer checkout real falló con
+   MP **400 `Parameters passed are invalid`**: `/preapproval` espera `back_url` como
+   **string** y la EF mandaba el objeto `{success, failure, pending}` (eso es de
+   *checkout preferences*). Verificado contra la API con el payload real → **201 +
+   `init_point`**; corregido en la EF (`?resultado=checkout`) y la página quedó con
+   aviso según estado real. Dato: el `PUT` de cancelación acepta `cancelled` (doble l);
+   la EF ya lo cubre con el retry `canceled` → `cancelled`.
+7. [ ] **Prueba end-to-end** (con el precio cargado, paso 7) → *Suscribirme* → `init_point`
    → pagar (tarjeta de prueba de MP si es sandbox) → al volver debe verse el aviso
    *"Mercado Pago recibió tu pago"* y el estado `active` con `Próximo cobro`; verificar
    en BD:

@@ -246,11 +246,10 @@ Deno.serve(async (req) => {
       reason: plan.name,
       external_reference: user.id,
       payer_email: user.email,
-      back_url: {
-        success: `${baseUrl}/suscripcion?resultado=exito`,
-        failure: `${baseUrl}/suscripcion?resultado=fallo`,
-        pending: `${baseUrl}/suscripcion?resultado=pendiente`,
-      },
+      // /preapproval acepta UNA sola URL en string (el objeto {success, failure,
+      // pending} es de checkout preferences y MP lo rechaza con 400). Como no
+      // distingue el desenlace, la página verifica el estado real al volver.
+      back_url: `${baseUrl}/suscripcion?resultado=checkout`,
       notification_url: notificationUrl,
       status: "pending",
       auto_recurring: {

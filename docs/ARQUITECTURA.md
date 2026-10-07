@@ -334,9 +334,12 @@ plan asociado; el detalle del producto está en `docs/FASE9_mercadopago.md`):
    `PUT /preapproval/{id}` con `status`. Si el período pagado sigue vigente se marca
    `cancel_at_period_end` y la suscripción corre hasta el fin; si no, pasa a `canceled`.
    La webhook de MP confirma el mismo estado cuando notifica (`applyCancellation`).
-4. **Vuelta del checkout** — el `back_url` de MP redirige a
-   `/suscripcion?resultado=exito|fallo|pendiente`; la página muestra el aviso, limpia la
-   query y recarga el estado (con `exito`, un recargo automático a los 5 s).
+4. **Vuelta del checkout** — `/preapproval` sólo admite **una** `back_url` en *string*
+   (el objeto `{success, failure, pending}` es de checkout preferences y MP lo rechaza
+   con 400 `Parameters passed are invalid`), así que MP redirige a
+   `/suscripcion?resultado=checkout` sin distinguir el desenlace: la página muestra el
+   aviso según el **estado real** (`active` → "Mercado Pago recibió tu pago"; si no,
+   "Todavía no confirmamos tu pago"), limpia la query y recarga a los 5 s.
 
 Seguridad: el alta y la cancelación corren con el JWT del usuario (401 sin sesión,
 403 si la cuenta está suspendida); el monto sale siempre de `subscription_plans` y la

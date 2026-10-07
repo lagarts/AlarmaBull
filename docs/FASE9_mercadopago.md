@@ -43,7 +43,7 @@ Por qué no los alternativos:
 1. OPTIONS/POST; JWT propio con `auth.getUser()` → **401** sin usuario.
 2. `profiles.suspended` (consulta con el JWT; RLS `profiles_select_self_or_admin`) → **403** suspendido.
 3. Plan activo con `service role`: si `price_ars <= 0` → **400** "El precio del plan todavía no fue configurado por el administrador".
-4. `POST https://api.mercadopago.com/preapproval` con `reason`, `external_reference`, `payer_email`, `back_url` (`${APP_URL}/suscripcion?resultado=exito|fallo|pendiente`), `notification_url` (la webhook), `status: "pending"`, `auto_recurring`.
+4. `POST https://api.mercadopago.com/preapproval` con `reason`, `external_reference`, `payer_email`, `back_url` **en string** (`${APP_URL}/suscripcion?resultado=checkout`; este endpoint rechaza el objeto `{success, failure, pending}` con 400), `notification_url` (la webhook), `status: "pending"`, `auto_recurring`.
 5. Upsert en `user_subscriptions` (`onConflict: user_id`) guardando `provider = 'mercadopago'` y `provider_subscription_id`; **no se cambia `status`**.
 6. Respuesta 200: `{ init_point, preapproval_id, environment }` (`environment`: `test` si el token empieza con `TEST-`, si no `production`). Error de MP → **502** genérico (detalle sólo en el log del servidor).
 
@@ -138,16 +138,17 @@ Nota sobre entornos: la documentación 2026 muestra tokens de prueba también co
 
 ## 7. Tareas manuales pendientes
 
-1. **Pendiente (bloqueante)**: obtener credenciales de Mercado Pago y setear
-   `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL` (`supabase secrets set ...`).
-   Checklist: sección 13 de `docs/DESPLEGUE.md`.
+1. **Hecho (7/10/2026)**: credenciales de Mercado Pago seteadas
+   (`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL` vía `supabase secrets set ...`);
+   token verificado contra la API.
 2. **Hecho**: las cuatro funciones están desplegadas (`mercadopago-webhook` con
-   `--no-verify-jwt`). La FASE 16 agregó `{"action":"cancel"}` a `mercadopago-create`:
-   hay que redesplegarla cuando se publique esa fase.
+   `--no-verify-jwt`); `mercadopago-create` quedó con `{"action":"cancel"}` (FASE 16)
+   y con el fix del `back_url` en string (7/10/2026).
 3. **Hecho**: el precio está cargado (Plan mensual, 3000 ARS; `admin_set_plan_price`).
-4. **Hecho en la FASE 16**: `/suscripcion` lee `?resultado=exito|fallo|pendiente` del
-   `back_url` (aviso + limpiezo de la query + recarga) y ofrece *Cancelar suscripción*
-   (`PUT /preapproval/{id}`). **Pendiente**: los textos legales (condiciones/precio).
+4. **Hecho en la FASE 16**: `/suscripcion` lee `?resultado=checkout` del `back_url`
+   (aviso según estado real + limpiezo de la query + recarga a los 5 s) y ofrece
+   *Cancelar suscripción* (`PUT /preapproval/{id}`). **Pendiente**: los textos legales
+   (condiciones/precio).
 5. **Pendiente**: probar el flujo completo en sandbox (sección 6) y, al publicar,
    repetir con credenciales de producción.
 
