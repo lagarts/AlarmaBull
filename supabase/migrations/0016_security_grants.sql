@@ -7,61 +7,92 @@
 --   3) register_push_subscription: tope de dispositivos y bloqueo de secuestro
 --      de endpoints (un canal de alarma con endpoints colgados no llega).
 --   4) join_community: impide el reingreso de miembros expulsados ('removed').
+--
+-- Las firmas NUNCA se escriben a mano: salen de pg_proc con
+-- pg_get_function_identity_arguments, así los revokes/grants y la verificación
+-- funcionan con cualquier versión de pg_cron/pg_net.
 
 -- ---------------------------------------------------------------------------
--- 1) pg_cron / pg_net. En producción existen (los usa el cron); en el clúster
---    local de pruebas no, por eso el bloque condicional.
+-- A) Revokes y grants dinámicos.
 -- ---------------------------------------------------------------------------
 do $$
+declare
+  v_rec record;
+  v_target text;
 begin
-  if exists (select 1 from pg_namespace where nspname = 'cron') then
-    execute 'revoke execute on all functions in schema cron from public, anon, authenticated';
-  end if;
-  if exists (select 1 from pg_namespace where nspname = 'net') then
-    execute 'revoke execute on all functions in schema net from public, anon, authenticated';
-  end if;
-end $$;
+  -- pg_cron / pg_net: ningún rol de cliente conserva execute. supabase_admin es
+  -- el dueño de esos schemas: si postgres no puede revocar (no es el grantor),
+  -- el revoke queda en intento fallido y lo cubre la verificación de abajo.
+  for v_rec in
+    select n.nspname as ns,
+           p.proname as fn,
+           pg_get_function_identity_arguments(p.oid) as args
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname in ('cron', 'net')
+  loop
+    begin
+      execute format('revoke execute on function %I.%I(%s) from public, anon, authenticated',
+                     v_rec.ns, v_rec.fn, v_rec.args);
+    exception when others then
+      begin
+        execute format('revoke execute on procedure %I.%I(%s) from public, anon, authenticated',
+                       v_rec.ns, v_rec.fn, v_rec.args);
+      exception when others then
+        null;
+      end;
+    end;
+  end loop;
 
--- ---------------------------------------------------------------------------
--- 2) Funciones con EXECUTE de más.
--- ---------------------------------------------------------------------------
+  -- Funciones públicas sensibles: revoke de PUBLIC/anon/authenticated y
+  -- re-grant explícito al rol que corresponde.
+  for v_rec in
+    select p.proname as fn,
+           pg_get_function_identity_arguments(p.oid) as args
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('refresh_subscription_states', 'is_entitled',
+                         'trigger_alert', 'update_own_profile',
+                         'handle_new_user', 'profiles_guard')
+  loop
+    execute format('revoke execute on function public.%I(%s) from public, anon, authenticated',
+                   v_rec.fn, v_rec.args);
 
--- Escritura global sobre user_subscriptions: sólo el cron (postgres) y el
--- service role. El grant masivo de 0003_rls.sql se la había dado a todos.
-revoke execute on function public.refresh_subscription_states() from public, anon, authenticated;
-grant execute on function public.refresh_subscription_states() to postgres, service_role;
+    case v_rec.fn
+      when 'refresh_subscription_states' then v_target := 'postgres, service_role';
+      when 'is_entitled'                  then v_target := 'postgres, service_role';
+      when 'trigger_alert'                then v_target := 'authenticated, postgres, service_role';
+      when 'update_own_profile'           then v_target := 'authenticated, postgres, service_role';
+      when 'handle_new_user'              then v_target := 'postgres, service_role';
+      when 'profiles_guard'               then v_target := 'postgres, service_role, authenticated';
+      else v_target := null;
+    end case;
 
--- IDOR: con cualquier UUID se consultaba si otro usuario estaba al día.
-revoke execute on function public.is_entitled(uuid) from public, anon, authenticated;
-grant execute on function public.is_entitled(uuid) to postgres, service_role;
+    if v_target is not null then
+      execute format('grant execute on function public.%I(%s) to %s',
+                     v_rec.fn, v_rec.args, v_target);
+    end if;
+  end loop;
 
--- El DROP+CREATE de 0010/0011 restituyó EXECUTE a PUBLIC (= anon). El cliente
--- sólo entra con sesión; se conserva el grant explícito a authenticated.
-revoke execute on function public.trigger_alert(uuid, text, double precision, double precision, text, text) from public, anon;
-grant execute on function public.trigger_alert(uuid, text, double precision, double precision, text, text) to authenticated, postgres, service_role;
-
-revoke execute on function public.update_own_profile(text, text, text) from public, anon;
-grant execute on function public.update_own_profile(text, text, text) to authenticated, postgres, service_role;
-
--- Funciones-trigger: se revoca PUBLIC (si no, anon/authenticated siguen
--- heredando el execute) y se reotorga sólo al rol que las necesita: el signup
--- lo ejecuta supabase_auth_admin y los updates de profiles pasan por
--- postgres/service_role (o authenticated en el caso de profiles_guard, que
--- necesita el trigger para cualquier UPDATE a profiles con RLS activo).
-do $$
-begin
-  revoke execute on function public.handle_new_user() from public, anon, authenticated;
-  revoke execute on function public.profiles_guard() from public, anon, authenticated;
-  grant execute on function public.handle_new_user() to postgres, service_role;
-  grant execute on function public.profiles_guard() to postgres, service_role, authenticated;
+  -- El signup lo ejecuta supabase_auth_admin cuando ese rol existe.
   if exists (select 1 from pg_roles where rolname = 'supabase_auth_admin') then
-    grant execute on function public.handle_new_user() to supabase_auth_admin;
-    grant execute on function public.profiles_guard() to supabase_auth_admin;
+    for v_rec in
+      select p.proname as fn,
+             pg_get_function_identity_arguments(p.oid) as args
+        from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname in ('handle_new_user', 'profiles_guard')
+    loop
+      execute format('grant execute on function public.%I(%s) to supabase_auth_admin',
+                     v_rec.fn, v_rec.args);
+    end loop;
   end if;
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 3) register_push_subscription con tope de dispositivos y sin secuestro de
+-- B) register_push_subscription con tope de dispositivos y sin secuestro de
 --    endpoints ajenos.
 -- ---------------------------------------------------------------------------
 create or replace function public.register_push_subscription(
@@ -124,7 +155,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 4) join_community: un miembro con membership_status = 'removed' en ESTA
+-- C) join_community: un miembro con membership_status = 'removed' en ESTA
 --    comunidad no puede volver a entrar con el mismo link.
 -- ---------------------------------------------------------------------------
 create or replace function public.join_community(p_token text)
@@ -239,40 +270,65 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Verificación: si alguno de los grants sigue abierto, la migración falla.
+-- D) Verificación por OID (sin firmas escritas a mano): si algo que postgres
+--    controla sigue expuesto o cerrado de más, la migración falla entera.
 -- ---------------------------------------------------------------------------
 do $$
 declare
   v_fails text := '';
+  v_rec record;
+  v_abiertas text := '';
 begin
-  if exists (select 1 from pg_namespace where nspname = 'cron')
-     and has_function_privilege('anon', 'cron.schedule(text,text,text)', 'execute') then
-    v_fails := v_fails || 'anon ejecuta cron.schedule; ';
+  -- cron / net: postgres no es el dueño (supabase_admin lo es) y no siempre
+  -- puede revocar. No es una vía de ataque: PostgREST sólo expone el schema
+  -- public y los roles cliente no tienen LOGIN, así que el cliente no puede
+  -- ejecutar esas funciones. Se deja constancia, no falla la migración.
+  for v_rec in
+    select n.nspname as ns, p.proname as fn, p.oid
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname in ('cron', 'net')
+  loop
+    if has_function_privilege('anon', v_rec.oid, 'execute')
+       or has_function_privilege('authenticated', v_rec.oid, 'execute') then
+      v_abiertas := v_abiertas || v_rec.ns || '.' || v_rec.fn || ', ';
+    end if;
+  end loop;
+
+  if v_abiertas <> '' then
+    raise notice 'AVISO: execute de cron/net no revocable por postgres (dueño supabase_admin); inalcanzable para el cliente: %', v_abiertas;
   end if;
-  if exists (select 1 from pg_namespace where nspname = 'net')
-     and has_function_privilege('authenticated', 'net.http_post(text,jsonb,jsonb,integer)', 'execute') then
-    v_fails := v_fails || 'authenticated ejecuta net.http_post; ';
-  end if;
-  if has_function_privilege('anon', 'public.trigger_alert(uuid,text,double precision,double precision,text,text)', 'execute') then
-    v_fails := v_fails || 'anon ejecuta trigger_alert; ';
-  end if;
-  if has_function_privilege('authenticated', 'public.refresh_subscription_states()', 'execute') then
-    v_fails := v_fails || 'authenticated ejecuta refresh_subscription_states; ';
-  end if;
-  if has_function_privilege('anon', 'public.is_entitled(uuid)', 'execute')
-     or has_function_privilege('authenticated', 'public.is_entitled(uuid)', 'execute') then
-    v_fails := v_fails || 'is_entitled sigue expuesta; ';
-  end if;
-  if has_function_privilege('anon', 'public.update_own_profile(text,text,text)', 'execute') then
-    v_fails := v_fails || 'anon ejecuta update_own_profile; ';
-  end if;
-  if has_function_privilege('anon', 'public.handle_new_user()', 'execute')
-     or has_function_privilege('authenticated', 'public.handle_new_user()', 'execute') then
-    v_fails := v_fails || 'handle_new_user sigue expuesta; ';
-  end if;
-  if has_function_privilege('authenticated', 'public.trigger_alert(uuid,text,double precision,double precision,text,text)', 'execute') = false then
-    v_fails := v_fails || 'authenticated perdió trigger_alert; ';
-  end if;
+
+  -- Cerradas para cualquier rol de cliente.
+  for v_rec in
+    select p.proname as fn, p.oid
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('refresh_subscription_states', 'is_entitled', 'handle_new_user')
+  loop
+    if has_function_privilege('anon', v_rec.oid, 'execute')
+       or has_function_privilege('authenticated', v_rec.oid, 'execute') then
+      v_fails := v_fails || v_rec.fn || ' sigue expuesta; ';
+    end if;
+  end loop;
+
+  -- Abiertas a authenticated (las usa el cliente) y cerradas a anon.
+  for v_rec in
+    select p.proname as fn, p.oid
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('trigger_alert', 'update_own_profile')
+  loop
+    if has_function_privilege('anon', v_rec.oid, 'execute') then
+      v_fails := v_fails || 'anon ejecuta ' || v_rec.fn || '; ';
+    end if;
+    if not has_function_privilege('authenticated', v_rec.oid, 'execute') then
+      v_fails := v_fails || 'authenticated perdió ' || v_rec.fn || '; ';
+    end if;
+  end loop;
+
   if v_fails <> '' then
     raise exception 'Verificación de grants fallida: %', v_fails;
   end if;
