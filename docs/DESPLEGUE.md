@@ -399,24 +399,30 @@ La FASE 16 cierra el circuito en la app:
 
 Orden (credenciales primero: sin los secretos `mercadopago-create` responde 500):
 
-1. [ ] **Credenciales de Mercado Pago** → <https://www.mercadopago.com.ar/developers> →
+1. [x] **Credenciales de Mercado Pago** → <https://www.mercadopago.com.ar/developers> →
    *Tu integración > Credenciales* → Access Token (`APP_USR-...`); y
    *Tu integración > Webhooks > Configurar notificación* → clave secreta (firma
-   `x-signature`, obligatoria: sin ella la webhook responde 401).
-2. [ ] **Secretos** → desde la raíz del repo:
+   `x-signature`, obligatoria: sin ella la webhook responde 401). Cargadas el 7/10/2026
+   (token verificado con `GET /v1/payments/search` → 200, moneda ARS).
+2. [x] **Secretos** → desde la raíz del repo:
    ```bash
    supabase secrets set MP_ACCESS_TOKEN="APP_USR-..." MP_WEBHOOK_SECRET="..." APP_URL="https://alarma-bull.vercel.app"
    ```
-3. [ ] **Migraciones** → SQL Editor, en este orden (la 0014 agenda la función que arregla
-   la 0015):
+   Verificado el 7/10/2026: `mercadopago-create` sin JWT responde **401** (no 500), o sea
+   que los tres secretos están completos.
+3. [x] **Migraciones** → SQL Editor, en este orden (la 0014 agenda la función que arregla
+   la 0015): aplicadas por el usuario el 7/10/2026 (verificado: `prosrc` con el cast al
+   enum y job `subscriptions-refresh` presente en `cron.job`).
    - `supabase/migrations/0015_subscription_refresh_fix.sql`
    - `supabase/migrations/0014_subscription_cron.sql` → debe salir
      `OK: el cron de suscripciones está activo.`
-4. [ ] **Edge Function** → redesplegar `mercadopago-create` (agregó `action=cancel`):
+4. [x] **Edge Function** → redesplegada `mercadopago-create` (agregó `action=cancel`) el
+   7/10/2026:
    ```bash
    supabase functions deploy mercadopago-create
    ```
-5. [ ] **Frontend** → commit + push (Vercel redespliega solo).
+5. [x] **Frontend** → commit + push el 7/10/2026 (bundle `index-jiYy-eKO.js` verificado en
+   producción con los strings nuevos).
 6. [ ] **Prueba end-to-end** (con el precio cargado, paso 7) → *Suscribirme* → `init_point`
    → pagar (tarjeta de prueba de MP si es sandbox) → al volver debe verse el aviso
    *"Mercado Pago recibió tu pago"* y el estado `active` con `Próximo cobro`; verificar
@@ -459,8 +465,8 @@ Orden (credenciales primero: sin los secretos `mercadopago-create` responde 500)
 | 19 | Pegar `0013_contact_alerts.sql` (FASE 15: avisos a contactos por la app) | listo (7/10/2026; verificado: columna `account_id` presente) |
 | 20 | Redesplegar `estoy-bien-deliver` (FASE 15) | listo (7/10/2026) |
 | 21 | Push del frontend con la FASE 15 | listo (7/10/2026); falta la prueba manual del link con otra cuenta |
-| 22 | Credenciales MP: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL` | **pendiente — bloqueante** (sin ellos `mercadopago-create` responde 500). Ver sección 13 |
-| 23 | Pegar `0015_subscription_refresh_fix.sql` y después `0014_subscription_cron.sql` (FASE 16) | pendiente; verificar el aviso `OK: el cron de suscripciones está activo.` |
-| 24 | Redesplegar `mercadopago-create` (FASE 16: cancelar desde la app) | pendiente |
-| 25 | Push del frontend con la FASE 16 (`?resultado=`, cancelar, débito automático) | pendiente |
+| 22 | Credenciales MP: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `APP_URL` | listo (7/10/2026; token verificado contra la API de MP) |
+| 23 | Pegar `0015_subscription_refresh_fix.sql` y después `0014_subscription_cron.sql` (FASE 16) | listo (7/10/2026; job `subscriptions-refresh` verificado en `cron.job`) |
+| 24 | Redesplegar `mercadopago-create` (FASE 16: cancelar desde la app) | listo (7/10/2026) |
+| 25 | Push del frontend con la FASE 16 (`?resultado=`, cancelar, débito automático) | listo (7/10/2026; bundle `index-jiYy-eKO.js` verificado) |
 | 26 | Prueba end-to-end de cobro: checkout + webhook + cancelación (sección 13.6) | pendiente |

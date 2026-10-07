@@ -137,9 +137,11 @@ export function SubscriptionPage() {
           <div>
             <h2 className="text-base font-bold text-navy-900">Acciones</h2>
             <p className="mt-1 text-sm text-navy-600">
-              {status === 'active'
-                ? 'La suscripción se renueva sola: Mercado Pago debita el importe todos los meses.'
-                : 'El pago se realiza de forma segura con Mercado Pago.'}
+              {status !== 'active'
+                ? 'El pago se realiza de forma segura con Mercado Pago.'
+                : subscription?.provider === 'mercadopago'
+                  ? 'La suscripción se renueva sola: Mercado Pago debita el importe todos los meses.'
+                  : 'Tu suscripción está activa.'}
             </p>
           </div>
 

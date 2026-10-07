@@ -54,7 +54,10 @@ export function CurrentStatusCard({
   const needsRenew = Boolean(renewCopy[status])
   const ctaLabel = status === 'none' ? 'Suscribirme' : 'Renovar'
   const canCancel =
-    status === 'active' && Boolean(subscription?.cancel_at_period_end) === false && Boolean(onCancel)
+    status === 'active' &&
+    subscription?.provider === 'mercadopago' &&
+    !subscription?.cancel_at_period_end &&
+    Boolean(onCancel)
 
   let detail = ''
   if (subscription && status === 'trial') detail = trialDetail(subscription)
@@ -76,7 +79,10 @@ export function CurrentStatusCard({
 
         {detail && <p className="text-sm text-navy-600">{detail}</p>}
 
-        {subscription && status === 'active' && !subscription.cancel_at_period_end && (
+        {subscription &&
+          status === 'active' &&
+          subscription.provider === 'mercadopago' &&
+          !subscription.cancel_at_period_end && (
           <p className="text-sm text-navy-600">
             Débito automático: Mercado Pago debita{' '}
             <span className="font-semibold text-navy-900">
