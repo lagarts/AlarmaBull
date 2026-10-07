@@ -1,5 +1,5 @@
 ﻿import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { AuthLayout } from '../components/layout/AuthLayout'
 import { Button } from '../components/ui/Button'
 import { Notice } from '../components/ui/Feedback'
@@ -50,9 +50,16 @@ function authErrorMessage(cause: unknown): string {
   return errorMessage(cause)
 }
 
+/** Destino después de entrar: sólo rutas internas (nada de //host). */
+function safeRedirect(value: string | null): string {
+  return value && value.startsWith('/') && !value.startsWith('//') ? value : '/inicio'
+}
+
 export function AuthPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const redirectTo = safeRedirect(params.get('redirect'))
 
   const [mode, setMode] = useState<Mode>('login')
   const [fullName, setFullName] = useState('')
@@ -69,7 +76,7 @@ export function AuthPage() {
       password: pass,
     })
     if (error) throw new AppError(authErrorMessage(error))
-    navigate('/inicio', { replace: true })
+    navigate(redirectTo, { replace: true })
     return true
   })
 
@@ -86,7 +93,7 @@ export function AuthPage() {
       setConfirmationSent(true)
       return true
     }
-    navigate('/inicio', { replace: true })
+    navigate(redirectTo, { replace: true })
     return true
   })
 
@@ -130,7 +137,7 @@ export function AuthPage() {
     }
   }
 
-  if (user) return <Navigate to="/inicio" replace />
+  if (user) return <Navigate to={redirectTo} replace />
 
   if (confirmationSent) {
     return (

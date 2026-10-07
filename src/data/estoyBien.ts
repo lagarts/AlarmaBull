@@ -42,6 +42,8 @@ export interface CheckinContact {
   relationship: string | null
   notify_channel: 'sms' | 'email'
   status: CheckinContactStatus
+  /** Cuenta que aceptó el link: si existe, el aviso entra por la app. */
+  account_id: string | null
   invite_token: string
   invited_at: string
   consent_at: string | null
@@ -100,7 +102,7 @@ export async function listCheckinContacts(): Promise<CheckinContact[]> {
   const { data, error } = await supabase
     .from('estoy_bien_contacts')
     .select(
-      'id, full_name, phone, email, relationship, notify_channel, status, invite_token, invited_at, consent_at, created_at',
+      'id, full_name, phone, email, relationship, notify_channel, status, account_id, invite_token, invited_at, consent_at, created_at',
     )
     .order('created_at', { ascending: false })
   if (error) throw toAppError(error)
@@ -129,8 +131,9 @@ export function rotateCheckinInvite(id: string): Promise<string> {
 }
 
 /**
- * Respuesta del contacto por el link público (sin cuenta, sólo con token).
- * También puede invocarse desde `anon`.
+ * Respuesta del contacto por el link público (sólo con token).
+ * Aceptar exige sesión en la app: así el aviso de alerta le llega a esa
+ * cuenta (campanita + push). Rechazar se puede hacer sin cuenta.
  */
 export function respondToCheckinInvite(
   token: string,

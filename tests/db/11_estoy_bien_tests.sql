@@ -649,8 +649,24 @@ begin
   reset role;
   reset request.jwt.claims;
 
-  -- El contacto responde sin cuenta, sólo con el token
+  -- Aceptar exige cuenta: sin sesión no se puede (0013)
   set role anon;
+  reset request.jwt.claims;
+  begin
+    perform public.estoy_bien_contact_respond(v_token::text, true);
+    raise exception 'FALLO: se aceptó la invitación sin cuenta';
+  exception
+    when others then
+      if sqlerrm like 'FALLO:%' then raise; end if;
+      if sqlerrm not like '%iniciar sesión%' then
+        raise exception 'FALLO: error inesperado al aceptar sin cuenta (%)', sqlerrm;
+      end if;
+      raise notice 'OK: aceptar el link exige una cuenta en la app';
+  end;
+
+  -- Con sesión (Ana) la acepta y la invitación queda ligada a su cuenta
+  set role authenticated;
+  set request.jwt.claims to '{"sub":"11111111-1111-1111-1111-111111111111"}';
   v_state := public.estoy_bien_contact_respond(v_token::text, true);
 
   if v_state ->> 'status' <> 'accepted' then
@@ -667,6 +683,9 @@ begin
   end;
 
   -- anon no tiene acceso directo a las tablas del módulo
+  reset role;
+  reset request.jwt.claims;
+  set role anon;
   begin
     perform count(*) from public.estoy_bien_contacts;
     raise exception 'FALLO: anon leyó contactos directamente';
@@ -691,8 +710,13 @@ begin
        where user_id = '22222222-2222-2222-2222-222222222222') <> 'accepted' then
     raise exception 'FALLO: el contacto no quedó aceptado';
   end if;
+  if (select account_id from public.estoy_bien_contacts
+       where user_id = '22222222-2222-2222-2222-222222222222')
+     is distinct from '11111111-1111-1111-1111-111111111111'::uuid then
+    raise exception 'FALLO: la invitación aceptada no quedó ligada a la cuenta';
+  end if;
 
-  raise notice 'OK: invitación con token, aceptación sin cuenta y cierre anon';
+  raise notice 'OK: invitación con token, aceptación con cuenta y cierre anon';
 end
 $$;
 

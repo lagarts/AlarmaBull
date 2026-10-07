@@ -308,7 +308,9 @@ Estado al 4/10/2026:
 Contactos personales (FASE 12): los avisos por **SMS/email** quedan en
 `public.estoy_bien_reminders` con `status = 'pending'` y
 `last_error = 'sin proveedor de SMS/email configurado'` hasta que se cargue un proveedor;
-sólo el push y la notificación in-app se envían hoy.
+sólo el push y la notificación in-app se envían hoy. Desde la FASE 15 (ver sección 12) el
+contacto que aceptó el link **con una cuenta** no pasa por ese camino: recibe el aviso por
+la app (campanita + push) y no se le crean filas de SMS/email.
 
 ---
 
@@ -343,6 +345,38 @@ caracteres) a todos los vecinos, con la misma cadena que la alerta roja:
 
 ---
 
+## 12. Avisos de Estoy Bien a los contactos por la app (FASE 15)
+
+El contacto que acepta el link de Estoy Bien **con una cuenta** pasa a recibir el aviso de
+alerta (y el de resolución) dentro de la app: fila en `public.notifications` (campanita) +
+fila `estoy_bien_reminders` con `channel = 'push'` que manda la cola del cron
+(`estoy-bien-deliver`). El que acepta **sin cuenta** no existe como usuario, así que sigue
+en el camino de SMS/email pendiente; **rechazar** el link sigue pudiendo hacerse sin cuenta.
+
+**Orden importa** (el frontend nuevo lee la columna `account_id`):
+
+1. [ ] **Migración 0013** → SQL Editor de Supabase → pegar
+   `supabase/migrations/0013_contact_alerts.sql` completo y ejecutar. Agrega
+   `estoy_bien_contacts.account_id`, hace que `estoy_bien_contact_respond` exija sesión al
+   aceptar y cambia `estoy_bien_tick` / `estoy_bien_confirm` para avisar a los contactos
+   con cuenta.
+2. [ ] **Edge Function** → redesplegada `estoy-bien-deliver` (manda el push a la cuenta del
+   contacto y juzga la confirmación por la persona vigilada, no por el destinatario):
+   ```bash
+   supabase functions deploy estoy-bien-deliver
+   ```
+3. [ ] **Frontend** → commit + push (Vercel redespliega solo). El link de invitación lleva
+   a `/acceder?redirect=...` si no hay sesión y vuelve a la invitación al entrar.
+4. [ ] **Verificación** → en la app: *Contactos personales* → copiar el link → abrirlo con
+   otra cuenta → **Acepto ser contacto** → aparece el badge **Avisa en la app**; en BD:
+   ```sql
+   select full_name, status, account_id from public.estoy_bien_contacts order by created_at desc;
+   ```
+   y al vencer un ciclo, el contacto debe recibir la campanita *"Estoy bien: sin
+   confirmación"* y el push en el teléfono (si tiene dispositivo registrado).
+
+---
+
 ## Resumen de pendientes manuales
 
 | # | Paso | Estado |
@@ -365,4 +399,7 @@ caracteres) a todos los vecinos, con la misma cadena que la alerta roja:
 | 15 | Redesplegar `trigger-alert` + push del frontend (FASE 13) | listo (5/10/2026); falta la prueba manual en la app |
 | 16 | Pegar `0011_profile_address.sql` (dirección en el perfil) | listo (5/10/2026) |
 | 17 | Push del frontend con la dirección en el perfil | listo (5/10/2026); falta probarlo en la app |
-| 18 | Pegar `0012_invite_link.sql` (link de invitación siempre copiable + vencimiento/usos en null) | **pendiente — antes de publicar el frontend nuevo** (si no, `listInvites` falla al pedir la columna `token`) |
+| 18 | Pegar `0012_invite_link.sql` (link de invitación siempre copiable + vencimiento/usos en null) | listo (5/10/2026) |
+| 19 | Pegar `0013_contact_alerts.sql` (FASE 15: avisos a contactos por la app) | **pendiente — antes de publicar el frontend nuevo** (si no, `listCheckinContacts` falla al pedir la columna `account_id`) |
+| 20 | Redesplegar `estoy-bien-deliver` (FASE 15) | pendiente |
+| 21 | Push del frontend con la FASE 15 | pendiente; falta la prueba manual en la app |

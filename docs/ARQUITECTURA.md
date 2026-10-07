@@ -284,3 +284,29 @@ Total: **15 tablas, todas con RLS activado** (`0003_rls.sql`).
 - Documentación: `docs/FASE1.md` (fase 1), `docs/FASE7_push.md` (Web Push),
   `docs/FASE9_mercadopago.md` (Mercado Pago), `docs/ESTADO.md` (estado por fase) y
   `docs/DESPLEGUE.md` (checklist de puesta en producción).
+
+## 13.7. Estoy Bien: el aviso a los contactos por la app (FASE 15)
+
+Los contactos personales de Estoy Bien se agregan con un link
+(`/contacto/aceptar?token=…`). Desde `0013_contact_alerts.sql` hay dos caminos:
+
+- **Acepta con cuenta** (`estoy_bien_contacts.account_id`): `estoy_bien_contact_respond`
+  exige sesión al aceptar (rechazar sigue pudiendo hacerse anónimo, sólo con el token) y
+  guarda `account_id`. Cuando `estoy_bien_tick` abre la alerta (y `estoy_bien_confirm` al
+  resolverse) le escribe una fila en `notifications` (campanita) y otra en
+  `estoy_bien_reminders` con `user_id` = cuenta del contacto, `contact_id` = la fila del
+  contacto, `channel = 'push'` y `url = '/inicio'`; la cola del cron la manda a sus
+  dispositivos. No se le crean filas de SMS/email.
+- **Acepta sin cuenta / todavía pendiente**: queda `account_id is null` y sigue el camino
+  viejo de `sms`/`email` con `status = 'pending'` y
+  `last_error = 'sin proveedor de SMS/email configurado'`.
+
+Claves de seguridad y consistencia: el índice único `(user_id, account_id)` evita que la
+misma cuenta sea contacto dos veces del dueño; nadie puede ser su propio contacto; el
+aviso es idempotente (el índice `reminders_uniq` incluye `contact_id`), y
+`estoy-bien-deliver` juzga la confirmación del ciclo por **la persona vigilada**
+(`estoy_bien_contacts.user_id`), no por la cuenta que recibe, y salta el aviso si el
+contacto dejó de estar aceptado.
+
+Orden de despliegue: pegar `0013_contact_alerts.sql` **antes** de publicar el frontend
+(nuevo), porque `listCheckinContacts` pide la columna `account_id`.

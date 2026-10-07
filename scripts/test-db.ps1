@@ -79,11 +79,13 @@ try {
     'supabase\migrations\0010_precaucion.sql',
     'supabase\migrations\0011_profile_address.sql',
     'supabase\migrations\0012_invite_link.sql',
+    'supabase\migrations\0013_contact_alerts.sql',
     'tests\db\10_tests.sql',
     'tests\db\11_estoy_bien_tests.sql',
     'tests\db\12_precaucion_tests.sql',
     'tests\db\13_profile_address_tests.sql',
-    'tests\db\14_invite_link_tests.sql'
+    'tests\db\14_invite_link_tests.sql',
+    'tests\db\15_contact_alerts.sql'
   )
 
   foreach ($file in $files) {

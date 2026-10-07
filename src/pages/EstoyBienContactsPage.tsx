@@ -125,8 +125,9 @@ export function EstoyBienContactsPage() {
 
       <div className="space-y-5">
         <Notice tone="info">
-          Estos contactos no son los números oficiales de emergencia. Los avisos por SMS o email
-          quedan registrados como pendientes hasta que haya un proveedor configurado.
+          Estos contactos no son los números oficiales de emergencia. Los que aceptaron el link
+          con una cuenta reciben el aviso en la app; los demás quedan registrados como
+          pendientes hasta que haya un proveedor de SMS/email configurado.
         </Notice>
 
         {notice && <Notice tone="success">{notice}</Notice>}
@@ -265,11 +266,18 @@ export function EstoyBienContactsPage() {
                           <p className="text-xs text-navy-500">{contact.relationship}</p>
                         )}
                       </div>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_TONES[contact.status]}`}
-                      >
-                        {STATUS_LABELS[contact.status]}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {contact.account_id && (
+                          <span className="rounded-full bg-av-blue/10 px-3 py-1 text-xs font-semibold text-av-blue">
+                            Avisa en la app
+                          </span>
+                        )}
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_TONES[contact.status]}`}
+                        >
+                          {STATUS_LABELS[contact.status]}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">

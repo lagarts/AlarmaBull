@@ -40,6 +40,7 @@ interface ReminderRow {
   user_id: string;
   cycle_date: string;
   kind: string;
+  contact_id: string | null;
   title: string | null;
   body: string | null;
   url: string | null;
@@ -112,10 +113,23 @@ async function markReminder(
 
 /** Si la persona ya confirmó el ciclo, los avisos de ese día ya no sirven. */
 async function alreadyConfirmed(db: SupabaseClient, reminder: ReminderRow): Promise<boolean> {
+  // Un aviso dirigido a un contacto (user_id = cuenta que recibe) se juzga
+  // por la confirmación de la persona vigilada, no por la del destinatario.
+  let checkedUserId = reminder.user_id;
+  if (reminder.contact_id) {
+    const { data: contact } = await db
+      .from("estoy_bien_contacts")
+      .select("user_id, status")
+      .eq("id", reminder.contact_id)
+      .maybeSingle();
+    if (!contact || contact.status !== "accepted") return true;
+    checkedUserId = contact.user_id;
+  }
+
   const { data } = await db
     .from("estoy_bien_checks")
     .select("id")
-    .eq("user_id", reminder.user_id)
+    .eq("user_id", checkedUserId)
     .eq("cycle_date", reminder.cycle_date)
     .limit(1);
   return Boolean(data && data.length > 0);
@@ -170,7 +184,7 @@ Deno.serve(async (req) => {
 
     let query = db
       .from("estoy_bien_reminders")
-      .select("id, user_id, cycle_date, kind, title, body, url, attempts")
+      .select("id, user_id, cycle_date, kind, contact_id, title, body, url, attempts")
       .eq("channel", "push")
       .in("status", ["pending", "failed"])
       .lt("attempts", MAX_ATTEMPTS)
