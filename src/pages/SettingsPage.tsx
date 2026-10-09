@@ -140,7 +140,7 @@ export function SettingsPage() {
           <CardBody>
             <h2 className="text-base font-bold text-navy-900">Notificaciones push</h2>
             <p className="mt-1 text-sm text-navy-600">
-              Recibí las alertas de tu comunidad aunque la app esté cerrada.
+              Recibí las alertas de tu grupo aunque la app esté cerrada.
             </p>
             <div className="mt-3">{pushBody}</div>
           </CardBody>
@@ -196,7 +196,7 @@ export function SettingsPage() {
             <h2 className="text-base font-bold text-navy-900">Acerca de</h2>
             <p className="mt-2 text-sm font-semibold text-navy-800">{APP_NAME}</p>
             <p className="mt-1 text-sm text-navy-600">
-              Los datos de tu comunidad son privados: sólo los integrantes pueden verlos.
+              Los datos de tu grupo son privados: sólo los integrantes pueden verlos.
             </p>
           </CardBody>
         </Card>

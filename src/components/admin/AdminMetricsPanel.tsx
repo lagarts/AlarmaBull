@@ -27,7 +27,7 @@ export function AdminMetricsPanel() {
     ? [
         { label: 'Usuarios totales', value: countLabel(data, 'users_total') },
         { label: 'Usuarios suspendidos', value: countLabel(data, 'users_suspended') },
-        { label: 'Comunidades', value: countLabel(data, 'communities_total') },
+        { label: 'Grupos', value: countLabel(data, 'communities_total') },
         { label: 'Integrantes activos', value: countLabel(data, 'members_active') },
         { label: 'Alertas (30 días)', value: countLabel(data, 'alerts_last_30d') },
         { label: 'Suscripciones en prueba', value: countLabel(data, 'subscriptions_trial') },

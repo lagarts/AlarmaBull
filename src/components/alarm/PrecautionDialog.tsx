@@ -64,7 +64,7 @@ export function PrecautionDialog({
           Enviar aviso de precaución
         </h2>
         <p className="mt-2 text-sm text-navy-600">
-          Todos los vecinos activos de tu comunidad reciben este mensaje en su notificación.
+          Todos los vecinos activos de tu grupo reciben este mensaje en su notificación.
           No es una emergencia.
         </p>
 

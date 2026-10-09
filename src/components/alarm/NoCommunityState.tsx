@@ -9,12 +9,12 @@ const outlineClass =
 export function NoCommunityState() {
   return (
     <EmptyState
-      title="Todavía no tenés una comunidad"
-      description="Creá una comunidad vecinal o unite a una existente con un código de invitación para empezar a recibir alertas."
+      title="Todavía no tenés un grupo"
+      description="Creá un grupo vecinal o unite a uno existente con un código de invitación para empezar a recibir alertas."
       action={
         <div className="flex flex-wrap justify-center gap-3">
           <Link to="/comunidad/crear" className={primaryClass}>
-            Crear comunidad
+            Crear grupo
           </Link>
           <Link to="/comunidad/unirse" className={outlineClass}>
             Unirse con código

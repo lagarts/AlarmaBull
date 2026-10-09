@@ -18,7 +18,7 @@ type CurrentStatusCardProps = {
 
 const renewCopy: Record<string, string> = {
   none: 'Todavía no tenés una suscripción. Suscribite para alertar a tus vecinos cuando lo necesites.',
-  expired: 'Tu suscripción venció. Renová para volver a alertar a los vecinos de tu comunidad.',
+  expired: 'Tu suscripción venció. Renová para volver a alertar a los vecinos de tu grupo.',
   past_due: 'Hay un pago pendiente de acreditación. Si el pago se rechaza, la suscripción se vence.',
   canceled: 'Tu suscripción fue cancelada. Renová para volver a recibir alertas.',
 }

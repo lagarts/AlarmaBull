@@ -531,3 +531,4 @@ cookies `httpOnly` y rotación de `sbp_`/`service_role`/anon/VAPID.
 | 27 | Aplicar `0016_security_grants.sql` (ciberseguridad fase 1) | listo (7/10/2026; vía Management API, verificado en BD) |
 | 28 | Push del frontend con CSP + HSTS (sección 14) | listo (7/10/2026; commit `5ce2870`, cabeceras verificadas en prod) |
 | 29 | Redesplegar `mercadopago-create` (409 + cuenta suspendida fail-closed) | listo (7/10/2026) |
+| 30 | Pantalla **Grupos**: aplicar `0017_leave_community.sql` + push del frontend (menú lateral, `/grupos`, "comunidad" → "grupo" en la UI) | listo (9/10/2026; RPC verificada en prod: `anon` sin execute, `leave_community` responde `42501` al cliente anónimo) |

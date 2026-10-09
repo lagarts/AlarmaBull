@@ -15,6 +15,7 @@ import {
   EstoyBienHistoryPage,
   EstoyBienPage,
   EstoyBienSettingsPage,
+  GroupsPage,
   HomePage,
   InvitesPage,
   JoinCommunityPage,
@@ -66,6 +67,7 @@ export default function App() {
               <Route path="/estoy-bien/configuracion" element={<EstoyBienSettingsPage />} />
               <Route path="/estoy-bien/contactos" element={<EstoyBienContactsPage />} />
               <Route path="/estoy-bien/historial" element={<EstoyBienHistoryPage />} />
+              <Route path="/grupos" element={<GroupsPage />} />
               <Route path="/integrantes" element={<MembersPage />} />
               <Route path="/invitaciones" element={<InvitesPage />} />
               <Route path="/suscripcion" element={<SubscriptionPage />} />

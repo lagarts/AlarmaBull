@@ -44,8 +44,8 @@ export function CreateCommunityPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        title="Crear comunidad"
-        subtitle="Creá la comunidad de tu barrio. Cada persona puede pertenecer a una sola."
+        title="Crear grupo"
+        subtitle="Creá el grupo de tu barrio. Cada persona puede pertenecer a uno solo."
       />
 
       {loading && <Spinner />}
@@ -54,7 +54,7 @@ export function CreateCommunityPage() {
 
       {!loading && !error && createdName !== null && (
         <Notice tone="success">
-          <p>Comunidad creada. Ya sos administrador: compartí un código de invitación.</p>
+          <p>Grupo creado. Ya sos administrador: compartí un código de invitación.</p>
           <Link to="/invitaciones" className={`mt-3 ${linkButtonPrimaryClass}`}>
             Generar código de invitación
           </Link>
@@ -70,7 +70,7 @@ export function CreateCommunityPage() {
           <CardBody>
             <form onSubmit={handleSubmit} noValidate>
               <label className={labelClass} htmlFor="community-name">
-                Nombre de la comunidad
+                Nombre del grupo
               </label>
               <input
                 id="community-name"
@@ -110,7 +110,7 @@ export function CreateCommunityPage() {
                 loading={createAction.pending}
                 disabled={!isValid}
               >
-                Crear comunidad
+                Crear grupo
               </Button>
             </form>
           </CardBody>

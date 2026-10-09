@@ -40,7 +40,7 @@ export function JoinCommunityPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
-        title="Unirse a una comunidad"
+        title="Unirse a un grupo"
         subtitle="Ingresá el código de invitación que te compartió un vecino."
       />
 
@@ -50,7 +50,7 @@ export function JoinCommunityPage() {
 
       {!loading && !error && joined && (
         <Notice tone="success">
-          <p className="font-semibold">Te uniste a la comunidad</p>
+          <p className="font-semibold">Te uniste al grupo</p>
           <p className="mt-1 text-xs">En un momento te llevamos al inicio.</p>
         </Notice>
       )}

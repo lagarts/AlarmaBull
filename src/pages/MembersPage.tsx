@@ -31,8 +31,8 @@ export function MembersPage() {
           community
             ? `${community.member_count} ${
                 community.member_count === 1 ? 'integrante' : 'integrantes'
-              } en la comunidad`
-            : 'Vecinos de tu comunidad, roles y estados.'
+              } en el grupo`
+            : 'Vecinos de tu grupo, roles y estados.'
         }
       />
 
@@ -42,11 +42,11 @@ export function MembersPage() {
 
       {!loading && !error && !community && (
         <EmptyState
-          title="Todavía no estás en una comunidad"
-          description="Unite a una comunidad vecinal para ver el listado de integrantes."
+          title="Todavía no estás en un grupo"
+          description="Unite a un grupo vecinal para ver el listado de integrantes."
           action={
             <Link to="/comunidad/unirse" className={linkButtonPrimaryClass}>
-              Unirse a una comunidad
+              Unirse a un grupo
             </Link>
           }
         />
@@ -205,7 +205,7 @@ function MembersPanel({
           <div className="p-5">
             <EmptyState
               title="Sin integrantes"
-              description="Todavía no hay vecinos activos en la comunidad."
+              description="Todavía no hay vecinos activos en el grupo."
             />
           </div>
         ) : (
@@ -252,7 +252,7 @@ function MembersPanel({
                           )
                         }
                       >
-                        Quitar de la comunidad
+                        Quitar del grupo
                       </Button>
                     )}
                 </li>

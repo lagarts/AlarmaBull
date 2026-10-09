@@ -62,7 +62,7 @@ export function InvitesPage() {
     <div className="mx-auto max-w-3xl">
       <PageHeader
         title="Invitaciones"
-        subtitle="Códigos de invitación para sumar vecinos a la comunidad."
+        subtitle="Códigos de invitación para sumar vecinos al grupo."
       />
 
       {loading && <Spinner />}
@@ -71,11 +71,11 @@ export function InvitesPage() {
 
       {!loading && !error && !community && (
         <EmptyState
-          title="Todavía no estás en una comunidad"
-          description="Unite a una comunidad para generar códigos de invitación."
+          title="Todavía no estás en un grupo"
+          description="Unite a un grupo para generar códigos de invitación."
           action={
             <Link to="/comunidad/unirse" className={linkButtonPrimaryClass}>
-              Unirse a una comunidad
+              Unirse a un grupo
             </Link>
           }
         />
@@ -153,7 +153,7 @@ function InvitesPanel({ community }: { community: MyCommunity }) {
   return (
     <div className="space-y-4">
       {!isAdmin && (
-        <Notice tone="info">Sólo el administrador de la comunidad puede generar invitaciones.</Notice>
+        <Notice tone="info">Sólo el administrador del grupo puede generar invitaciones.</Notice>
       )}
 
       {isAdmin && (

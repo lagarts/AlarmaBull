@@ -38,6 +38,14 @@ export function removeMember(memberId: string): Promise<void> {
   return rpc<void>('remove_member', { p_member_id: memberId })
 }
 
+/**
+ * Baja propia desde la pantalla Grupos. Si era el último integrante,
+ * la RPC archiva el grupo y revoca sus invitaciones.
+ */
+export function leaveCommunity(): Promise<void> {
+  return rpc<void>('leave_community')
+}
+
 export async function listMembers(communityId: string): Promise<CommunityMember[]> {
   const supabase = requireSupabase()
   const { data, error } = await supabase

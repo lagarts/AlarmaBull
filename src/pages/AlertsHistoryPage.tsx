@@ -19,7 +19,7 @@ export function AlertsHistoryPage() {
 
   useAlertsRealtime(community?.community_id, alertsState.reload)
 
-  if (communityState.loading) return <Spinner label="Cargando tu comunidad…" />
+  if (communityState.loading) return <Spinner label="Cargando tu grupo…" />
   if (communityState.error) {
     return <ErrorState description={communityState.error} onRetry={communityState.reload} />
   }
@@ -36,7 +36,7 @@ export function AlertsHistoryPage() {
       ) : alertsState.error ? (
         <ErrorState description={alertsState.error} onRetry={alertsState.reload} />
       ) : !alerts || alerts.length === 0 ? (
-        <EmptyState title="Todavía no hubo alertas en tu comunidad" />
+        <EmptyState title="Todavía no hubo alertas en tu grupo" />
       ) : (
         <Card>
           <CardBody>

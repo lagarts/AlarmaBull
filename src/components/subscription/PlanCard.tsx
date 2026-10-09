@@ -4,7 +4,7 @@ import { Card, CardBody } from '../ui/Card'
 import { Notice } from '../ui/Feedback'
 
 const GENERIC_FEATURES = [
-  'Alertas a los vecinos de tu comunidad',
+  'Alertas a los vecinos de tu grupo',
   'Contactos de emergencia',
   'Notificaciones push',
 ]

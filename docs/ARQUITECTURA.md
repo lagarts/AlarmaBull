@@ -67,10 +67,11 @@ SaaS multiusuario (modelo individual) para comunidades vecinales en Argentina:
 | `/inicio` | Inicio con botón de alarma | 2 / 6 |
 | `/alertas` | Historial de alertas | 6 |
 | `/alertas/:alertId` | Detalle de alerta | 6 |
-| `/integrantes` | Integrantes de la comunidad | 4 |
+| `/grupos` | Grupos: el grupo de vecinos y el de Estoy Bien | 18 |
+| `/integrantes` | Integrantes del grupo | 4 |
 | `/invitaciones` | Gestión de invitaciones | 4 |
-| `/comunidad/crear` | Crear comunidad | 4 |
-| `/comunidad/unirse` | Unirse a una comunidad | 4 |
+| `/comunidad/crear` | Crear grupo | 4 |
+| `/comunidad/unirse` | Unirse a un grupo | 4 |
 | `/suscripcion` | Suscripción y pagos | 5 |
 | `/perfil` | Perfil y preferencias | 3 |
 | `/perfil/editar` | Configuración del perfil | 3 |

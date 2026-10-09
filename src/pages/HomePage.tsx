@@ -109,7 +109,7 @@ export function HomePage() {
     }
   }
 
-  if (communityState.loading) return <Spinner label="Cargando tu comunidad…" />
+  if (communityState.loading) return <Spinner label="Cargando tu grupo…" />
   if (communityState.error) {
     return <ErrorState description={communityState.error} onRetry={communityState.reload} />
   }
@@ -156,7 +156,7 @@ export function HomePage() {
           <div>
             <h2 className="text-base font-bold text-navy-900">Botón de alarma</h2>
             <p className="mt-1 text-sm text-navy-600">
-              Al activarlo, todos los vecinos activos de tu comunidad reciben la alerta al instante.
+              Al activarlo, todos los vecinos activos de tu grupo reciben la alerta al instante.
             </p>
           </div>
 
@@ -192,7 +192,7 @@ export function HomePage() {
               {pendingMembership ? (
                 'Vas a poder alertar cuando tu solicitud sea aprobada.'
               ) : !activeMember ? (
-                'Esta comunidad no está activa, por eso no se pueden enviar alertas.'
+                'Este grupo no está activo, por eso no se pueden enviar alertas.'
               ) : (
                 <>
                   Renová tu plan para activar alertas.{' '}
@@ -230,7 +230,7 @@ export function HomePage() {
             ) : alertsState.error ? (
               <ErrorState description={alertsState.error} onRetry={alertsState.reload} />
             ) : !alerts || alerts.length === 0 ? (
-              <EmptyState title="Todavía no hubo alertas en tu comunidad" />
+              <EmptyState title="Todavía no hubo alertas en tu grupo" />
             ) : (
               <ul className="divide-y divide-navy-100">
                 {alerts.map((alert) => (
@@ -245,7 +245,7 @@ export function HomePage() {
       <ConfirmDialog
         open={confirmOpen}
         title="Confirmar alerta vecinal"
-        message="Vas a alertar a todos los vecinos de tu comunidad. ¿Confirmás?"
+        message="Vas a alertar a todos los vecinos de tu grupo. ¿Confirmás?"
         confirmLabel="Sí, alertar"
         pending={sending}
         onConfirm={handleConfirm}

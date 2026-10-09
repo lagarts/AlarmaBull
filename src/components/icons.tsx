@@ -42,6 +42,17 @@ export const UsersIcon = (p: IconProps) => (
   </Base>
 )
 
+export const GroupsIcon = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="6.8" r="2.8" />
+    <path d="M7.5 18.6c.4-3 2.1-4.9 4.5-4.9s4.1 1.9 4.5 4.9" />
+    <circle cx="4.6" cy="9.6" r="2.3" />
+    <path d="M1.6 17.4c.3-2.1 1.5-3.5 3.3-3.8" />
+    <circle cx="19.4" cy="9.6" r="2.3" />
+    <path d="M22.4 17.4c-.3-2.1-1.5-3.5-3.3-3.8" />
+  </Base>
+)
+
 export const TicketIcon = (p: IconProps) => (
   <Base {...p}>
     <path d="M3 9V7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2.5 2.5 0 0 0 0 5v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2.5 2.5 0 0 0 0-5Z" />
